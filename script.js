@@ -534,73 +534,124 @@ function drawLantern(time) {
 // DRAW PLAYER
 // ============================================
 
+
 function drawPlayer(time) {
-
     ctx.save();
-    ctx.translate(player.x, player.y);
 
-    const bob = player.moving
-        ? Math.sin(time * 0.018) * 2
-        : Math.sin(time * 0.002) * 1;
+    // Pixel-art drawing: keep all shapes aligned to a pixel grid.
+    const pixel = (x, y, w, h, colour) => {
+        ctx.fillStyle = colour;
+        ctx.fillRect(x, y, w, h);
+    };
 
-    // Shadow.
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
-    ctx.beginPath();
-    ctx.ellipse(0, 17, 19, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.translate(
+        Math.round(player.x),
+        Math.round(player.y)
+    );
+
+    const walking = player.moving;
+    const frame = walking ? Math.floor(time / 150) % 2 : 0;
+    const bob = walking ? (frame === 0 ? -1 : 1) : 0;
+
+    const dark = "#24151b";
+    const hair = "#38202a";
+    const skin = "#e9b995";
+    const skinShadow = "#c98e77";
+    const crimson = "#a30d25";
+    const brightCrimson = "#e32643";
+    const deepCrimson = "#650b1b";
+    const gold = "#d4af37";
+    const brightGold = "#ffe59a";
+    const boots = "#261a25";
+
+    // Ground shadow.
+    ctx.globalAlpha = 0.4;
+    pixel(-12, 17, 24, 5, "#000000");
+    pixel(-8, 22, 16, 2, "#000000");
+    ctx.globalAlpha = 1;
 
     ctx.translate(0, bob);
 
-    // Cloak.
-    ctx.fillStyle = "#8e142d";
-    ctx.beginPath();
-    ctx.moveTo(-15, -4);
-    ctx.lineTo(15, -4);
-    ctx.lineTo(18, 22);
-    ctx.lineTo(0, 29);
-    ctx.lineTo(-18, 22);
-    ctx.closePath();
-    ctx.fill();
-
-    // Gold cloak detail.
-    ctx.strokeStyle = "#d4af37";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-12, 15);
-    ctx.lineTo(0, 22);
-    ctx.lineTo(12, 15);
-    ctx.stroke();
-
-    // Head.
-    ctx.fillStyle = "#e8b995";
-    ctx.beginPath();
-    ctx.arc(0, -10, 12, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Hair.
-    ctx.fillStyle = "#271a1a";
-    ctx.beginPath();
-    ctx.arc(0, -14, 12, Math.PI, Math.PI * 2);
-    ctx.fill();
-
-    // Small gold hair ornament.
-    ctx.fillStyle = "#f5d77a";
-    ctx.beginPath();
-    ctx.arc(7, -19, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Facing direction marker.
-    ctx.fillStyle = "#fff1b8";
-
-    if (player.direction === "up") {
-        ctx.fillRect(-3, -25, 6, 3);
-    } else if (player.direction === "down") {
-        ctx.fillRect(-3, 1, 6, 3);
-    } else if (player.direction === "left") {
-        ctx.fillRect(-14, -12, 3, 6);
+    // Feet: alternate while walking.
+    if (frame === 0) {
+        pixel(-8, 16, 6, 7, boots);
+        pixel(3, 17, 6, 6, boots);
     } else {
-        ctx.fillRect(11, -12, 3, 6);
+        pixel(-8, 17, 6, 6, boots);
+        pixel(3, 16, 6, 7, boots);
     }
+
+    // Cloak silhouette.
+    pixel(-11, -2, 22, 19, deepCrimson);
+    pixel(-13, 1, 26, 12, crimson);
+    pixel(-10, 13, 20, 7, crimson);
+    pixel(-7, 18, 14, 3, deepCrimson);
+
+    // Cloak highlights.
+    pixel(-8, 1, 5, 13, brightCrimson);
+    pixel(-3, 3, 3, 10, "#c71937");
+    pixel(5, 2, 4, 11, "#7f1027");
+
+    // Arms.
+    pixel(-15, 1, 4, 10, skinShadow);
+    pixel(-14, 3, 3, 7, skin);
+    pixel(11, 1, 4, 10, skinShadow);
+    pixel(11, 3, 3, 7, skin);
+
+    // Gold cloak clasp.
+    pixel(-3, 0, 6, 4, gold);
+    pixel(-2, 1, 4, 2, brightGold);
+
+    // Cloak emblem.
+    pixel(-2, 9, 4, 2, gold);
+    pixel(-1, 8, 2, 4, brightGold);
+
+    // Head and hair, adjusted for direction.
+    if (player.direction === "up") {
+
+        // Back of head.
+        pixel(-7, -15, 14, 14, skinShadow);
+        pixel(-9, -17, 18, 12, dark);
+        pixel(-7, -18, 14, 5, hair);
+        pixel(-10, -13, 3, 12, dark);
+        pixel(7, -13, 3, 12, dark);
+
+        // Hair detail.
+        pixel(-5, -7, 10, 4, hair);
+
+    } else {
+
+        // Face.
+        pixel(-7, -15, 14, 14, skin);
+        pixel(-5, -3, 10, 2, skinShadow);
+
+        // Hair.
+        pixel(-9, -18, 18, 7, dark);
+        pixel(-8, -16, 4, 11, dark);
+        pixel(4, -16, 4, 11, dark);
+        pixel(-5, -19, 10, 3, hair);
+
+        if (player.direction === "left") {
+            pixel(-10, -13, 4, 8, dark);
+            pixel(-6, -11, 3, 2, "#fff1b8");
+        } else if (player.direction === "right") {
+            pixel(6, -13, 4, 8, dark);
+            pixel(3, -11, 3, 2, "#fff1b8");
+        } else {
+            // Eyes when facing down.
+            pixel(-5, -9, 2, 2, dark);
+            pixel(3, -9, 2, 2, dark);
+            pixel(-2, -3, 4, 1, skinShadow);
+        }
+
+        // Gold hair ornament.
+        pixel(5, -19, 4, 3, gold);
+        pixel(6, -20, 2, 2, brightGold);
+    }
+
+    // Tiny gold details on the cloak.
+    pixel(-11, 5, 2, 3, gold);
+    pixel(9, 5, 2, 3, gold);
 
     ctx.restore();
 }
