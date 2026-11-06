@@ -78,6 +78,187 @@ const objects = [
 
 const trees = [];
 
+
+// ==========================================
+// FOREST DECORATIONS
+// ==========================================
+
+const forestDecorations = {
+    flowers: [],
+    mushrooms: [],
+    rocks: [],
+    fireflies: []
+};
+
+// Consistent random generator.
+function forestRandom(seed) {
+    let value = seed;
+
+    return function () {
+        value = (value * 16807) % 2147483647;
+        return (value - 1) / 2147483646;
+    };
+}
+
+function generateForestDecorations() {
+    const random = forestRandom(251225);
+
+    forestDecorations.flowers = [];
+    forestDecorations.mushrooms = [];
+    forestDecorations.rocks = [];
+    forestDecorations.fireflies = [];
+
+    // Flowers.
+    for (let i = 0; i < 100; i++) {
+        forestDecorations.flowers.push({
+            x: 100 + random() * 2400,
+            y: 100 + random() * 1700,
+            colour: [
+                "#a30d25",
+                "#d4af37",
+                "#e32643",
+                "#fff1b8"
+            ][Math.floor(random() * 4)],
+            size: 2 + Math.floor(random() * 2)
+        });
+    }
+
+    // Glowing mushrooms.
+    for (let i = 0; i < 28; i++) {
+        forestDecorations.mushrooms.push({
+            x: 100 + random() * 2400,
+            y: 100 + random() * 1700,
+            glow: random() * Math.PI * 2,
+            colour: random() > 0.5 ? "#e32643" : "#d4af37"
+        });
+    }
+
+    // Small forest rocks.
+    for (let i = 0; i < 45; i++) {
+        forestDecorations.rocks.push({
+            x: 100 + random() * 2400,
+            y: 100 + random() * 1700,
+            size: 5 + random() * 7
+        });
+    }
+
+    // Fireflies.
+    for (let i = 0; i < 22; i++) {
+        forestDecorations.fireflies.push({
+            x: 100 + random() * 2400,
+            y: 100 + random() * 1700,
+            phase: random() * Math.PI * 2,
+            speed: 0.5 + random()
+        });
+    }
+}
+
+// ==========================================
+// DRAW FOREST DECORATIONS
+// ==========================================
+
+function drawForestDecorations(time) {
+
+    // Rocks.
+    forestDecorations.rocks.forEach(rock => {
+        const x = Math.round(rock.x);
+        const y = Math.round(rock.y);
+
+        ctx.fillStyle = "#27313a";
+        ctx.fillRect(x, y, rock.size, rock.size * 0.65);
+
+        ctx.fillStyle = "#46505a";
+        ctx.fillRect(x + 2, y + 1, rock.size * 0.4, 2);
+
+        ctx.fillStyle = "#171f29";
+        ctx.fillRect(x + 1, y + rock.size * 0.65, rock.size - 1, 2);
+    });
+
+    // Flowers.
+    forestDecorations.flowers.forEach(flower => {
+        const x = Math.round(flower.x);
+        const y = Math.round(flower.y);
+        const s = flower.size;
+
+        // Stem.
+        ctx.fillStyle = "#476b45";
+        ctx.fillRect(x, y + s, 2, 5);
+
+        // Petals.
+        ctx.fillStyle = flower.colour;
+        ctx.fillRect(x - s, y, s, s);
+        ctx.fillRect(x + s, y, s, s);
+        ctx.fillRect(x, y - s, s, s);
+        ctx.fillRect(x, y + s, s, s);
+
+        // Centre.
+        ctx.fillStyle = "#ffe59a";
+        ctx.fillRect(x, y, 2, 2);
+    });
+
+    // Mushrooms.
+    forestDecorations.mushrooms.forEach(mushroom => {
+        const x = Math.round(mushroom.x);
+        const y = Math.round(mushroom.y);
+
+        const pulse =
+            0.5 + Math.sin(time * 0.002 + mushroom.glow) * 0.25;
+
+        // Soft glow.
+        ctx.save();
+        ctx.globalAlpha = pulse * 0.25;
+        ctx.fillStyle = mushroom.colour;
+        ctx.beginPath();
+        ctx.arc(x, y, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Stem.
+        ctx.fillStyle = "#e4d6b9";
+        ctx.fillRect(x - 2, y, 5, 8);
+
+        // Cap.
+        ctx.fillStyle = mushroom.colour;
+        ctx.fillRect(x - 7, y - 4, 15, 5);
+        ctx.fillRect(x - 4, y - 7, 9, 4);
+
+        // Glowing spots.
+        ctx.fillStyle = "#fff1b8";
+        ctx.fillRect(x - 3, y - 4, 2, 2);
+        ctx.fillRect(x + 3, y - 2, 2, 2);
+    });
+
+    // Fireflies.
+    forestDecorations.fireflies.forEach(firefly => {
+        const floatY =
+            Math.sin(time * 0.001 * firefly.speed + firefly.phase) * 9;
+
+        const x = Math.round(
+            firefly.x +
+            Math.sin(time * 0.0005 + firefly.phase) * 5
+        );
+
+        const y = Math.round(firefly.y + floatY);
+
+        const glow =
+            0.35 + (Math.sin(time * 0.003 + firefly.phase) + 1) * 0.3;
+
+        ctx.save();
+
+        ctx.globalAlpha = glow * 0.3;
+        ctx.fillStyle = "#ffe59a";
+        ctx.beginPath();
+        ctx.arc(x, y, 9, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = glow;
+        ctx.fillStyle = "#fff1b8";
+        ctx.fillRect(x - 1, y - 1, 3, 3);
+
+        ctx.restore();
+    });
+}
+
 let seed = 12345;
 
 function random() {
@@ -141,6 +322,7 @@ function generateForest() {
 }
 
 generateForest();
+generateForestDecorations();
 
 // ============================================
 // CANVAS RESIZING
@@ -847,6 +1029,7 @@ function gameLoop(time) {
     ctx.translate(-camera.x, -camera.y);
 
     drawGround();
+    drawForestDecorations(time);
     drawPond(time);
     drawLantern(time);
 
