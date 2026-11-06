@@ -53,6 +53,7 @@ const touch = {
 // WORLD OBJECTS
 // ============================================
 
+
 const objects = [
     {
         id: "lantern",
@@ -69,8 +70,75 @@ const objects = [
         radius: 110,
         name: "The Moonlit Pond",
         discovered: false
+    },
+    {
+        id: "memory-moon",
+        x: 600,
+        y: 1190,
+        radius: 65,
+        name: "A Piece of Moonlight",
+        discovered: false
+    },
+    {
+        id: "memory-star",
+        x: 1250,
+        y: 880,
+        radius: 65,
+        name: "A Falling Star",
+        discovered: false
+    },
+    {
+        id: "memory-heart",
+        x: 1600,
+        y: 700,
+        radius: 65,
+        name: "A Memory of the Heart",
+        discovered: false
     }
 ];
+
+// ============================================
+// GAME PROGRESSION SYSTEM
+// ============================================
+
+const gameInventory = [];
+
+const gameQuest = {
+    lanternFound: false,
+    pondFound: false,
+    fragmentsFound: 0,
+    completed: false
+};
+
+const memoryFragmentNames = {
+    "memory-moon": "A Piece of Moonlight",
+    "memory-star": "A Falling Star",
+    "memory-heart": "A Memory of the Heart"
+};
+
+function checkForestQuest() {
+
+    if (
+        gameQuest.lanternFound &&
+        gameQuest.pondFound &&
+        gameQuest.fragmentsFound >= 3 &&
+        !gameQuest.completed
+    ) {
+
+        gameQuest.completed = true;
+
+        gameInventory.push("The Moonlit Memory");
+
+        updateGameSystemsUI();
+
+        return true;
+    }
+
+    updateGameSystemsUI();
+
+    return false;
+}
+
 
 // ============================================
 // FOREST GENERATION
@@ -930,6 +998,7 @@ function findNearbyObject() {
     return closest;
 }
 
+
 function interact() {
 
     if (!gameStarted) return;
@@ -940,12 +1009,17 @@ function interact() {
 
     activeObject = object;
 
+    // THE FORGOTTEN LANTERN.
     if (object.id === "lantern") {
 
         object.discovered = true;
 
         discoveries++;
+        gameQuest.lanternFound = true;
+
         updateDiscoveryCounter();
+
+        const completed = checkForestQuest();
 
         showMessage(
             "DISCOVERY 01",
@@ -953,16 +1027,326 @@ function interact() {
             "A little light can change the way an entire world looks. Perhaps this one was waiting for you."
         );
 
-    } else if (object.id === "pond") {
+    }
+
+    // THE MOONLIT POND.
+    else if (object.id === "pond") {
+
+        object.discovered = true;
+        gameQuest.pondFound = true;
+
+        const completed = checkForestQuest();
 
         showMessage(
-            "THE MOONLIT POND",
-            "Something beneath the water...",
-            "The surface shimmers as though it is hiding a secret. Perhaps there is more to discover here."
+            completed ? "QUEST COMPLETE" : "THE MOONLIT POND",
+            completed ? "The Moonlit Memory" : "Something beneath the water...",
+            completed
+                ? "The lantern, the fragments and the pond have revealed something beautiful. You have recovered the Moonlit Memory."
+                : "The water remembers things the world has forgotten. Three fragments are scattered throughout this forest. Find them, and perhaps the pond will reveal its secret."
+        );
+
+    }
+
+    // MEMORY FRAGMENTS.
+    else if (memoryFragmentNames[object.id]) {
+
+        object.discovered = true;
+
+        discoveries++;
+        gameQuest.fragmentsFound++;
+
+        const itemName = memoryFragmentNames[object.id];
+
+        gameInventory.push(itemName);
+
+        updateDiscoveryCounter();
+
+        const completed = checkForestQuest();
+
+        showMessage(
+            "MEMORY FRAGMENT " + gameQuest.fragmentsFound + " / 3",
+            completed ? "The Last Piece" : itemName,
+            completed
+                ? "Every fragment has been found. Your discoveries have unlocked the Moonlit Memory. The forest has another secret to share."
+                : "A tiny piece of something beautiful. It seems this forest has been holding onto memories."
         );
 
     }
 }
+
+
+// ============================================
+// MEMORY FRAGMENT VISUALS
+// ============================================
+
+function drawMemoryFragments(time) {
+
+    objects.forEach(object => {
+
+        if (!object.id.startsWith("memory-") || object.discovered) {
+            return;
+        }
+
+        const pulse = 0.7 + Math.sin(time * 0.003 + object.x) * 0.3;
+
+        const x = Math.round(object.x);
+        const y = Math.round(object.y);
+
+        ctx.save();
+
+        // Glowing aura.
+        ctx.globalAlpha = pulse * 0.35;
+
+        const glow = ctx.createRadialGradient(
+            x, y, 2,
+            x, y, 34
+        );
+
+        glow.addColorStop(0, "#ffe59a");
+        glow.addColorStop(1, "rgba(212,175,55,0)");
+
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(x, y, 34, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = 1;
+
+        // Pixel-art crystal.
+        ctx.fillStyle = "#8e142d";
+        ctx.fillRect(x - 6, y - 7, 12, 14);
+
+        ctx.fillStyle = "#e32643";
+        ctx.fillRect(x - 3, y - 11, 6, 4);
+        ctx.fillRect(x - 9, y - 3, 3, 7);
+        ctx.fillRect(x + 6, y - 3, 3, 7);
+
+        ctx.fillStyle = "#d4af37";
+        ctx.fillRect(x - 2, y - 5, 4, 9);
+
+        ctx.fillStyle = "#fff1b8";
+        ctx.fillRect(x - 2, y - 8, 3, 3);
+
+        ctx.restore();
+    });
+}
+
+// ============================================
+// INVENTORY AND QUEST JOURNAL UI
+// ============================================
+
+let systemsPanel;
+let systemsPanelTab = "journal";
+
+function createGameSystemsUI() {
+
+    const hud = document.getElementById("gameHUD");
+    const root = document.getElementById("game");
+
+    if (!hud || !root) return;
+
+    // Menu buttons.
+    const menu = document.createElement("div");
+
+    Object.assign(menu.style, {
+        position: "absolute",
+        top: "78px",
+        right: "18px",
+        display: "flex",
+        gap: "8px",
+        zIndex: "15",
+        pointerEvents: "auto"
+    });
+
+    function makeMenuButton(label, tab) {
+
+        const button = document.createElement("button");
+
+        button.textContent = label;
+
+        Object.assign(button.style, {
+            padding: "11px 13px",
+            background: "rgba(7,20,38,0.94)",
+            color: "#fff1b8",
+            border: "1px solid #d4af37",
+            fontSize: "10px",
+            letterSpacing: "1px",
+            cursor: "pointer"
+        });
+
+        button.addEventListener("click", () => {
+            openSystemsPanel(tab);
+        });
+
+        menu.appendChild(button);
+    }
+
+    makeMenuButton("INVENTORY", "inventory");
+    makeMenuButton("QUESTS", "journal");
+
+    hud.appendChild(menu);
+
+    // Main panel.
+    systemsPanel = document.createElement("div");
+
+    systemsPanel.style.cssText = `
+        position:absolute;
+        inset:0;
+        z-index:30;
+        display:none;
+        align-items:center;
+        justify-content:center;
+        background:rgba(2,7,17,0.88);
+        backdrop-filter:blur(8px);
+        padding:20px;
+    `;
+
+    systemsPanel.innerHTML = `
+        <div style="
+            width:min(520px,100%);
+            padding:30px;
+            background:#0b1728;
+            border:1px solid rgba(212,175,55,0.7);
+            box-shadow:0 0 60px rgba(163,13,37,0.2);
+            color:#fff5df;
+            box-sizing:border-box;
+        ">
+            <div style="
+                color:#d4af37;
+                font:11px Arial;
+                letter-spacing:4px;
+            " id="systemsSubtitle">YOUR JOURNEY</div>
+
+            <h2 id="systemsTitle" style="
+                color:#fff1b8;
+                font:normal 32px Georgia;
+                margin:15px 0 25px;
+            ">Quest Journal</h2>
+
+            <div id="systemsBody" style="
+                font:15px/2 Georgia;
+                color:#e6ddce;
+                min-height:130px;
+            "></div>
+
+            <button id="systemsClose" style="
+                margin-top:25px;
+                padding:13px 25px;
+                background:#8e142d;
+                color:#fff5df;
+                border:1px solid #d4af37;
+                letter-spacing:2px;
+                cursor:pointer;
+            ">CLOSE</button>
+        </div>
+    `;
+
+    root.appendChild(systemsPanel);
+
+    systemsPanel.querySelector("#systemsClose").addEventListener(
+        "click",
+        closeSystemsPanel
+    );
+
+    updateGameSystemsUI();
+}
+
+function openSystemsPanel(tab) {
+
+    systemsPanelTab = tab;
+
+    updateGameSystemsUI();
+
+    if (systemsPanel) {
+        systemsPanel.style.display = "flex";
+    }
+}
+
+function closeSystemsPanel() {
+
+    if (systemsPanel) {
+        systemsPanel.style.display = "none";
+    }
+}
+
+function updateGameSystemsUI() {
+
+    if (!systemsPanel) return;
+
+    const title = systemsPanel.querySelector("#systemsTitle");
+    const subtitle = systemsPanel.querySelector("#systemsSubtitle");
+    const body = systemsPanel.querySelector("#systemsBody");
+
+    if (systemsPanelTab === "inventory") {
+
+        subtitle.textContent = "THINGS YOU HAVE FOUND";
+        title.textContent = "Inventory";
+
+        if (gameInventory.length === 0) {
+
+            body.textContent =
+                "Your inventory is empty. Explore the forest and discover what it holds.";
+
+        } else {
+
+            body.innerHTML = gameInventory.map(item =>
+                `<div style="
+                    padding:9px 0;
+                    border-bottom:1px solid rgba(212,175,55,0.2);
+                ">✦ ${item}</div>`
+            ).join("");
+        }
+
+    } else {
+
+        subtitle.textContent = "YOUR CURRENT ADVENTURE";
+        title.textContent = "Quest Journal";
+
+        body.innerHTML = `
+            <div style="color:#d4af37;margin-bottom:12px">
+                THE LOST MEMORIES
+            </div>
+
+            <div>
+                ${gameQuest.lanternFound ? "✓" : "○"}
+                Discover the Forgotten Lantern
+            </div>
+
+            <div>
+                ${gameQuest.fragmentsFound >= 1 ? "✓" : "○"}
+                Find the first memory fragment
+            </div>
+
+            <div>
+                ${gameQuest.fragmentsFound >= 2 ? "✓" : "○"}
+                Find the second memory fragment
+            </div>
+
+            <div>
+                ${gameQuest.fragmentsFound >= 3 ? "✓" : "○"}
+                Find the third memory fragment
+            </div>
+
+            <div>
+                ${gameQuest.pondFound ? "✓" : "○"}
+                Investigate the Moonlit Pond
+            </div>
+
+            <div style="
+                margin-top:20px;
+                color:${gameQuest.completed ? "#ffe59a" : "#b7a98e"};
+            ">
+                ${gameQuest.completed
+                    ? "✦ QUEST COMPLETE — MOONLIT MEMORY UNLOCKED"
+                    : "Recover the lost memories of the forest."}
+            </div>
+        `;
+    }
+}
+
+// Create the interface once.
+createGameSystemsUI();
+
 
 // ============================================
 // GAME MESSAGE
@@ -1071,11 +1455,12 @@ function gameLoop(time) {
     const overlay = document.getElementById("gameMessage");
 
     // Pause movement while a message is open.
-    if (!overlay || overlay.style.display === "none") {
-
-        updatePlayer(deltaTime);
-
-    }
+if (
+    (!overlay || overlay.style.display === "none") &&
+    (!systemsPanel || systemsPanel.style.display === "none")
+) {
+    updatePlayer(deltaTime);
+}
 
     updateCamera();
 
@@ -1092,6 +1477,7 @@ function gameLoop(time) {
 
     drawGround();
     drawForestDecorations(time);
+    drawMemoryFragments(time);
     drawPond(time);
     drawLantern(time);
 
