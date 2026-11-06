@@ -1,1 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <title>25 — The World of Ayat</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- GAME -->
+    <main id="game">
+
+        <!-- GAME WORLD -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- TITLE SCREEN -->
+        <section id="titleScreen">
+
+            <div class="title-content">
+
+                <p class="eyebrow">A WORLD MADE FOR YOU</p>
+
+                <h1>25</h1>
+
+                <h2>THE WORLD OF AYAT</h2>
+
+                <p class="title-description">
+                    Somewhere beyond the stars,<br>
+                    an adventure is waiting.
+                </p>
+
+                <button id="startButton">
+                    BEGIN ADVENTURE
+                </button>
+
+                <p class="title-footer">
+                    CREATED WITH LOVE
+                </p>
+
+            </div>
+
+        </section>
+
+        <!-- GAME HUD -->
+        <section id="gameHUD" class="hidden">
+
+            <div class="hud-top">
+
+                <div class="location-name">
+                    <span>LOCATION</span>
+                    <h3 id="locationName">The Enchanted Forest</h3>
+                </div>
+
+                <div class="discovery-counter">
+                    <span>DISCOVERIES</span>
+                    <strong id="discoveryCount">00 / 25</strong>
+                </div>
+
+            </div>
+
+            <div id="interactionPrompt">
+                Press E to interact
+            </div>
+
+        </section>
+
+        <!-- TOUCH CONTROLS -->
+        <section id="touchControls" class="hidden">
+
+            <div class="movement-pad">
+
+                <button class="control up" data-direction="up">▲</button>
+                <button class="control left" data-direction="left">◀</button>
+                <button class="control down" data-direction="down">▼</button>
+                <button class="control right" data-direction="right">▶</button>
+
+            </div>
+
+            <button id="interactButton">
+                INTERACT
+            </button>
+
+        </section>
+
+    </main>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
