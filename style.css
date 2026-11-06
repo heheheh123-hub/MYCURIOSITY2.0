@@ -1,1 +1,339 @@
 
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --midnight: #071426;
+    --deep-night: #020711;
+    --crimson: #a30d25;
+    --bright-crimson: #e32643;
+    --gold: #d4af37;
+    --bright-gold: #ffe59a;
+    --cream: #fff5df;
+}
+
+body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--deep-night);
+    color: var(--cream);
+    font-family: Georgia, serif;
+    user-select: none;
+}
+
+#game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--midnight);
+}
+
+#gameCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* TITLE SCREEN */
+
+#titleScreen {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    overflow: hidden;
+    background:
+        radial-gradient(ellipse at 50% 42%,
+            rgba(139, 16, 39, 0.35),
+            transparent 45%),
+        linear-gradient(145deg,
+            #071426,
+            #100814 65%,
+            #020711);
+    transition: opacity 1.2s ease,
+                visibility 1.2s ease;
+}
+
+#titleScreen::before,
+#titleScreen::after {
+    content: "";
+    position: absolute;
+    width: 380px;
+    height: 380px;
+    border: 1px solid rgba(212, 175, 55, 0.12);
+    border-radius: 50%;
+    animation: titleOrbit 30s linear infinite;
+}
+
+#titleScreen::after {
+    width: 520px;
+    height: 520px;
+    animation-direction: reverse;
+    border-color: rgba(212, 175, 55, 0.07);
+}
+
+.title-content {
+    position: relative;
+    z-index: 2;
+    padding: 30px;
+    animation: titleAppear 1.8s ease both;
+}
+
+.eyebrow {
+    color: var(--gold);
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: 6px;
+    margin-bottom: 15px;
+}
+
+.title-content h1 {
+    font-size: clamp(110px, 23vw, 210px);
+    line-height: 1;
+    font-weight: normal;
+    color: var(--bright-gold);
+    text-shadow:
+        0 0 20px rgba(212, 175, 55, 0.6),
+        0 0 70px rgba(212, 175, 55, 0.25);
+}
+
+.title-content h2 {
+    font-size: clamp(17px, 3vw, 27px);
+    font-weight: normal;
+    letter-spacing: 5px;
+    color: var(--cream);
+    margin-top: 15px;
+}
+
+.title-description {
+    color: rgba(255, 245, 223, 0.7);
+    font-size: 15px;
+    line-height: 2;
+    margin-top: 28px;
+}
+
+#startButton {
+    margin-top: 40px;
+    padding: 17px 38px;
+    border: 1px solid var(--gold);
+    background: rgba(163, 13, 37, 0.25);
+    color: var(--bright-gold);
+    font-size: 11px;
+    letter-spacing: 4px;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+#startButton:hover {
+    background: var(--crimson);
+    box-shadow: 0 0 35px rgba(227, 38, 67, 0.4);
+    transform: translateY(-3px);
+}
+
+.title-footer {
+    margin-top: 55px;
+    font-family: Arial, sans-serif;
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: rgba(255, 245, 223, 0.35);
+}
+
+#titleScreen.leaving {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* GAME HUD */
+
+.hidden {
+    display: none !important;
+}
+
+#gameHUD {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    font-family: Arial, sans-serif;
+}
+
+.hud-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 28px 35px;
+    background: linear-gradient(
+        to bottom,
+        rgba(2, 7, 17, 0.8),
+        transparent
+    );
+}
+
+.location-name span,
+.discovery-counter span {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--gold);
+}
+
+.location-name h3 {
+    font-family: Georgia, serif;
+    font-weight: normal;
+    font-size: 18px;
+    margin-top: 7px;
+}
+
+.discovery-counter {
+    text-align: right;
+}
+
+.discovery-counter strong {
+    display: block;
+    color: var(--bright-gold);
+    margin-top: 7px;
+    font-size: 18px;
+}
+
+#interactionPrompt {
+    position: absolute;
+    bottom: 35px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 22px;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    background: rgba(2, 7, 17, 0.75);
+    color: var(--bright-gold);
+    font-size: 11px;
+    letter-spacing: 2px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+/* TOUCH CONTROLS */
+
+#touchControls {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    pointer-events: none;
+    font-family: Arial, sans-serif;
+}
+
+.movement-pad {
+    position: absolute;
+    bottom: 25px;
+    left: 25px;
+    width: 145px;
+    height: 145px;
+    pointer-events: auto;
+}
+
+.control {
+    position: absolute;
+    width: 45px;
+    height: 45px;
+    border: 1px solid rgba(212, 175, 55, 0.6);
+    border-radius: 12px;
+    background: rgba(2, 7, 17, 0.75);
+    color: var(--bright-gold);
+    font-size: 17px;
+    touch-action: none;
+}
+
+.control:active {
+    background: var(--crimson);
+}
+
+.up {
+    top: 0;
+    left: 50px;
+}
+
+.down {
+    bottom: 0;
+    left: 50px;
+}
+
+.left {
+    top: 50px;
+    left: 0;
+}
+
+.right {
+    top: 50px;
+    right: 0;
+}
+
+#interactButton {
+    position: absolute;
+    right: 30px;
+    bottom: 45px;
+    padding: 18px 22px;
+    border: 1px solid var(--gold);
+    border-radius: 50%;
+    background: rgba(163, 13, 37, 0.8);
+    color: var(--cream);
+    font-size: 10px;
+    letter-spacing: 1px;
+    pointer-events: auto;
+    touch-action: none;
+}
+
+/* ANIMATIONS */
+
+@keyframes titleAppear {
+    from {
+        opacity: 0;
+        transform: translateY(25px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes titleOrbit {
+    from {
+        transform: rotate(0deg) scale(1);
+    }
+    to {
+        transform: rotate(360deg) scale(1.05);
+    }
+}
+
+/* SMALL SCREENS */
+
+@media (max-width: 600px) {
+    .title-content {
+        padding: 15px;
+    }
+
+    .title-content h2 {
+        letter-spacing: 3px;
+    }
+
+    .eyebrow {
+        letter-spacing: 4px;
+    }
+
+    .hud-top {
+        padding: 20px;
+    }
+
+    .location-name h3 {
+        font-size: 14px;
+    }
+}
+
