@@ -525,24 +525,30 @@ function updateCamera() {
 // DRAW THE FOREST
 // ============================================
 
+
 function drawGround() {
 
-    ctx.fillStyle = "#10271f";
+    // Deep forest ground.
+    ctx.fillStyle = "#10231f";
     ctx.fillRect(0, 0, WORLD.width, WORLD.height);
 
-    // Subtle ground texture.
-    for (let i = 0; i < 850; i++) {
+    // Richer ground texture.
+    for (let i = 0; i < 1100; i++) {
 
         const x = (i * 173) % WORLD.width;
         const y = (i * 291) % WORLD.height;
 
-        ctx.fillStyle = i % 3 === 0
-            ? "rgba(140,180,100,0.055)"
-            : "rgba(0,0,0,0.07)";
+        if (i % 4 === 0) {
+            ctx.fillStyle = "rgba(135,170,105,0.075)";
+        } else if (i % 4 === 1) {
+            ctx.fillStyle = "rgba(0,0,0,0.09)";
+        } else if (i % 4 === 2) {
+            ctx.fillStyle = "rgba(75,115,95,0.07)";
+        } else {
+            ctx.fillStyle = "rgba(180,150,90,0.035)";
+        }
 
-        ctx.beginPath();
-        ctx.arc(x, y, 2 + (i % 4), 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillRect(x, y, 2 + (i % 4), 2 + (i % 3));
     }
 
     // Winding forest path.
@@ -554,16 +560,72 @@ function drawGround() {
 
     ctx.strokeStyle = "#46352d";
     ctx.lineWidth = 145;
+    ctx.lineCap = "round";
     ctx.stroke();
 
-    ctx.strokeStyle = "rgba(194,151,91,0.09)";
+    // Softer centre of the path.
+    ctx.strokeStyle = "rgba(194,151,91,0.12)";
     ctx.lineWidth = 100;
     ctx.stroke();
-}
 
-// ============================================
-// DRAW TREES
-// ============================================
+    // Midnight atmosphere.
+    const atmosphere = ctx.createRadialGradient(
+        WORLD.width / 2,
+        WORLD.height / 2,
+        200,
+        WORLD.width / 2,
+        WORLD.height / 2,
+        1550
+    );
+
+    atmosphere.addColorStop(0, "rgba(4,12,28,0.02)");
+    atmosphere.addColorStop(1, "rgba(2,5,17,0.38)");
+
+    ctx.fillStyle = atmosphere;
+    ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+
+    // Helper for soft environmental lighting.
+    function addLight(x, y, radius, colour) {
+
+        const light = ctx.createRadialGradient(
+            x, y, 0,
+            x, y, radius
+        );
+
+        light.addColorStop(0, colour);
+        light.addColorStop(1, "rgba(255,220,130,0)");
+
+        ctx.fillStyle = light;
+
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Lantern's warm golden light.
+    addLight(
+        850,
+        900,
+        230,
+        "rgba(255,174,65,0.22)"
+    );
+
+    // Moonlight around the pond.
+    addLight(
+        1840,
+        650,
+        310,
+        "rgba(100,155,230,0.20)"
+    );
+
+    // Subtle forest-wide golden ambience.
+    addLight(
+        1250,
+        950,
+        500,
+        "rgba(190,130,65,0.035)"
+    );
+}
 
 function drawTree(tree) {
 
