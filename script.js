@@ -1,4 +1,3 @@
-
 // ============================================
 // THE WORLD OF AYAT
 // GAME ENGINE — VERSION 1
@@ -41,6 +40,12 @@ let lastTime = 0;
 let discoveries = 0;
 let activeObject = null;
 
+// The game now contains two persistent, explorable areas.
+let currentArea = "forest";
+let forestReturnPosition = { x: 500, y: 840 };
+const FOREST_SIZE = { width: 2600, height: 1900 };
+const OBSERVATORY_SIZE = { width: 2200, height: 1600 };
+
 const keys = {};
 const touch = {
     up: false,
@@ -52,7 +57,6 @@ const touch = {
 // ============================================
 // WORLD OBJECTS
 // ============================================
-
 
 const objects = [
     {
@@ -94,6 +98,14 @@ const objects = [
         radius: 65,
         name: "A Memory of the Heart",
         discovered: false
+    },
+    {
+        id: "observatory-gate",
+        x: 500,
+        y: 840,
+        radius: 82,
+        name: "The Sealed Observatory",
+        discovered: false
     }
 ];
 
@@ -115,6 +127,36 @@ const memoryFragmentNames = {
     "memory-star": "A Falling Star",
     "memory-heart": "A Memory of the Heart"
 };
+
+// ============================================
+// AREA 2 — THE OBSERVATORY
+// ============================================
+
+const observatoryObjects = [
+    { id: "observatory-return", x: 260, y: 1350, radius: 85, name: "Return to the Forest", discovered: false },
+    { id: "star-fragment-one", x: 560, y: 1080, radius: 58, name: "The First Star Fragment", discovered: false },
+    { id: "star-fragment-two", x: 1640, y: 500, radius: 58, name: "The Second Star Fragment", discovered: false },
+    { id: "star-fragment-three", x: 1780, y: 1190, radius: 58, name: "The Third Star Fragment", discovered: false },
+    { id: "observatory-telescope", x: 1100, y: 650, radius: 95, name: "The Astronomer's Telescope", discovered: false },
+    { id: "observatory-console", x: 1100, y: 1050, radius: 78, name: "The Constellation Console", discovered: false },
+    { id: "observatory-chamber", x: 1900, y: 800, radius: 88, name: "The Celestial Chamber", discovered: false }
+];
+
+const observatoryQuest = {
+    fragmentsFound: 0,
+    telescopeRead: false,
+    puzzleSolved: false,
+    chamberEntered: false
+};
+
+const observatoryPillars = [
+    { x: 720, y: 650, r: 38 }, { x: 1480, y: 650, r: 38 },
+    { x: 720, y: 950, r: 38 }, { x: 1480, y: 950, r: 38 },
+    { x: 930, y: 350, r: 32 }, { x: 1270, y: 350, r: 32 },
+    { x: 930, y: 1250, r: 32 }, { x: 1270, y: 1250, r: 32 }
+];
+
+const observatoryStarSequence = ["moon", "star", "heart"];
 
 function checkForestQuest() {
 
@@ -139,13 +181,11 @@ function checkForestQuest() {
     return false;
 }
 
-
 // ============================================
 // FOREST GENERATION
 // ============================================
 
 const trees = [];
-
 
 // ==========================================
 // FOREST DECORATIONS
@@ -489,8 +529,12 @@ startButton.addEventListener("click", function() {
         touchControls.classList.remove("hidden");
     }
 
+    currentArea = "forest";
+    WORLD.width = FOREST_SIZE.width;
+    WORLD.height = FOREST_SIZE.height;
     player.x = 500;
     player.y = 1050;
+    document.getElementById("locationName").textContent = "The Enchanted Forest";
 
     lastTime = performance.now();
 
@@ -548,16 +592,27 @@ function updatePlayer(deltaTime) {
 
 function collides(x, y) {
 
-    for (const tree of trees) {
+    if (currentArea === "forest") {
+        for (const tree of trees) {
+            const distance = Math.hypot(
+                x - tree.x,
+                y - (tree.y + tree.size * 0.2)
+            );
 
-        const distance = Math.hypot(
-            x - tree.x,
-            y - (tree.y + tree.size * 0.2)
-        );
+            if (distance < tree.size * 0.43 + 13) return true;
+        }
+        return false;
+    }
 
-        if (distance < tree.size * 0.43 + 13) {
+    for (const pillar of observatoryPillars) {
+        if (Math.hypot(x - pillar.x, y - pillar.y) < pillar.r + 14) {
             return true;
         }
+    }
+
+    // The outer walls and central architecture remain solid.
+    if (x < 85 || y < 85 || x > WORLD.width - 85 || y > WORLD.height - 85) {
+        return true;
     }
 
     return false;
@@ -593,8 +648,7 @@ function updateCamera() {
 // DRAW THE FOREST
 // ============================================
 
-
-function drawGround() {
+function drawForestGround() {
 
     // Deep forest ground.
     ctx.fillStyle = "#10231f";
@@ -693,6 +747,305 @@ function drawGround() {
         500,
         "rgba(190,130,65,0.035)"
     );
+}
+
+// Select the correct ground renderer for the active area.
+function drawGround() {
+    if (currentArea === "forest") drawForestGround();
+    else drawObservatoryGround();
+}
+
+function drawObservatoryGround() {
+    const w = WORLD.width;
+    const h = WORLD.height;
+
+    ctx.fillStyle = "#071426";
+    ctx.fillRect(0, 0, w, h);
+
+    // Deep-blue stone floor and subtle tilework.
+    for (let x = 90; x < w - 80; x += 90) {
+        for (let y = 90; y < h - 80; y += 90) {
+            ctx.fillStyle = ((x + y) / 90) % 2 === 0
+                ? "rgba(70,105,145,0.075)"
+                : "rgba(3,10,24,0.12)";
+            ctx.fillRect(x, y, 86, 86);
+            ctx.strokeStyle = "rgba(212,175,55,0.045)";
+            ctx.strokeRect(x, y, 86, 86);
+        }
+    }
+
+    // Star map etched into the floor.
+    ctx.save();
+    ctx.translate(1100, 800);
+    [180, 260, 360].forEach((radius, index) => {
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = index === 1
+            ? "rgba(212,175,55,0.28)"
+            : "rgba(130,170,220,0.16)";
+        ctx.lineWidth = index === 1 ? 3 : 1.5;
+        ctx.stroke();
+    });
+
+    for (let i = 0; i < 12; i++) {
+        const angle = i * Math.PI / 6;
+        const x = Math.cos(angle) * 310;
+        const y = Math.sin(angle) * 310;
+        ctx.fillStyle = "#d4af37";
+        ctx.fillRect(x - 3, y - 3, 6, 6);
+    }
+    ctx.restore();
+
+    // Broad approach path from the forest entrance.
+    ctx.beginPath();
+    ctx.moveTo(260, 1350);
+    ctx.bezierCurveTo(430, 1300, 500, 1180, 700, 1120);
+    ctx.bezierCurveTo(850, 1080, 900, 950, 1100, 800);
+    ctx.strokeStyle = "#243b55";
+    ctx.lineWidth = 120;
+    ctx.lineCap = "round";
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(212,175,55,0.12)";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Central observatory platform.
+    const platform = ctx.createRadialGradient(1100, 800, 40, 1100, 800, 430);
+    platform.addColorStop(0, "#24364d");
+    platform.addColorStop(0.72, "#14263d");
+    platform.addColorStop(1, "rgba(7,20,38,0)");
+    ctx.fillStyle = platform;
+    ctx.beginPath();
+    ctx.arc(1100, 800, 430, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Atmospheric glows.
+    const glow = ctx.createRadialGradient(1100, 800, 10, 1100, 800, 700);
+    glow.addColorStop(0, "rgba(70,115,190,0.16)");
+    glow.addColorStop(1, "rgba(70,115,190,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(350, 100, 1500, 1400);
+
+    // Distant stars in the ceiling/sky.
+    for (let i = 0; i < 130; i++) {
+        const x = (i * 197 + 71) % (w - 160) + 80;
+        const y = (i * 113 + 43) % (h - 160) + 80;
+        ctx.globalAlpha = 0.25 + ((i * 7) % 60) / 100;
+        ctx.fillStyle = i % 5 === 0 ? "#ffe59a" : "#a9c9f4";
+        ctx.fillRect(x, y, i % 9 === 0 ? 3 : 2, i % 9 === 0 ? 3 : 2);
+    }
+    ctx.globalAlpha = 1;
+
+    // Observatory pillars.
+    observatoryPillars.forEach(p => {
+        ctx.fillStyle = "rgba(0,0,0,0.35)";
+        ctx.beginPath();
+        ctx.ellipse(p.x + 8, p.y + 12, p.r + 8, p.r * 0.7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#52647a";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(212,175,55,0.55)";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.fillStyle = "#d4af37";
+        ctx.fillRect(p.x - 5, p.y - p.r + 9, 10, 4);
+    });
+
+    // Soft dark vignette.
+    const vignette = ctx.createRadialGradient(1100, 800, 300, 1100, 800, 1450);
+    vignette.addColorStop(0, "rgba(0,0,0,0)");
+    vignette.addColorStop(1, "rgba(0,0,0,0.48)");
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, w, h);
+}
+
+function drawForestGate(time) {
+    const x = 500;
+    const y = 840;
+    const pulse = 0.5 + Math.sin(time * 0.002) * 0.5;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    ctx.globalAlpha = 0.25 + pulse * 0.12;
+    ctx.fillStyle = "#d4af37";
+    ctx.beginPath();
+    ctx.arc(0, -45, 105, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    ctx.strokeStyle = "#8e6b31";
+    ctx.lineWidth = 18;
+    ctx.beginPath();
+    ctx.arc(0, -35, 58, Math.PI, 0);
+    ctx.lineTo(58, 30);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#d4af37";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(0, -35, 58, Math.PI, 0);
+    ctx.stroke();
+
+    ctx.fillStyle = "#10213a";
+    ctx.fillRect(-48, -36, 96, 66);
+    ctx.fillStyle = `rgba(115,160,230,${0.24 + pulse * 0.22})`;
+    ctx.fillRect(-39, -28, 78, 56);
+
+    ctx.fillStyle = "#fff1b8";
+    ctx.font = "22px Georgia";
+    ctx.textAlign = "center";
+    ctx.fillText("✦", 0, -2);
+    ctx.restore();
+}
+
+function drawObservatoryObjects(time) {
+    observatoryObjects.forEach(object => {
+        const { x, y, id } = object;
+        const pulse = 0.75 + Math.sin(time * 0.003 + x) * 0.25;
+
+        if (id.startsWith("star-fragment")) {
+            if (object.discovered) return;
+            ctx.save();
+            ctx.globalAlpha = pulse * 0.35;
+            const glow = ctx.createRadialGradient(x, y, 2, x, y, 48);
+            glow.addColorStop(0, "#fff1b8");
+            glow.addColorStop(1, "rgba(212,175,55,0)");
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(x, y, 48, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = "#d4af37";
+            ctx.beginPath();
+            ctx.moveTo(x, y - 18);
+            ctx.lineTo(x + 10, y);
+            ctx.lineTo(x, y + 18);
+            ctx.lineTo(x - 10, y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = "#fff1b8";
+            ctx.fillRect(x - 2, y - 9, 4, 18);
+            ctx.restore();
+        } else if (id === "observatory-telescope") {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(-0.42);
+            ctx.fillStyle = "#7c5428";
+            ctx.fillRect(-12, -65, 24, 130);
+            ctx.fillStyle = "#d4af37";
+            ctx.fillRect(-17, -67, 34, 12);
+            ctx.fillRect(-17, 52, 34, 12);
+            ctx.strokeStyle = "#a8b9cf";
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(0, 62);
+            ctx.lineTo(-45, 115);
+            ctx.moveTo(0, 62);
+            ctx.lineTo(45, 115);
+            ctx.moveTo(0, 62);
+            ctx.lineTo(0, 125);
+            ctx.stroke();
+            ctx.restore();
+        } else if (id === "observatory-console") {
+            ctx.save();
+            ctx.fillStyle = "#263b55";
+            ctx.beginPath();
+            ctx.arc(x, y, 48, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#d4af37";
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.fillStyle = "#fff1b8";
+            ctx.font = "34px Georgia";
+            ctx.textAlign = "center";
+            ctx.fillText("✦", x, y + 12);
+            ctx.restore();
+        } else if (id === "observatory-chamber" && observatoryQuest.puzzleSolved) {
+            ctx.save();
+            ctx.globalAlpha = 0.25 + pulse * 0.25;
+            ctx.fillStyle = "#d4af37";
+            ctx.beginPath();
+            ctx.arc(x, y, 90, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = "#d4af37";
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(x, y, 62, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = "#fff1b8";
+            ctx.font = "36px Georgia";
+            ctx.textAlign = "center";
+            ctx.fillText("✧", x, y + 12);
+            ctx.restore();
+        } else if (id === "observatory-return") {
+            ctx.save();
+            ctx.globalAlpha = 0.7 + pulse * 0.2;
+            ctx.strokeStyle = "#d4af37";
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(x, y, 45, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = "#fff1b8";
+            ctx.font = "32px Georgia";
+            ctx.textAlign = "center";
+            ctx.fillText("↶", x, y + 11);
+            ctx.restore();
+        }
+    });
+}
+            ctx.stroke();
+            ctx.fillStyle = "#fff1b8";
+            ctx.font = "32px Georgia";
+            ctx.textAlign = "center";
+            ctx.fillText("↶", x, y + 11);
+            ctx.restore();
+        }
+    });
+}
+
+function switchArea(area) {
+    if (area === currentArea) return;
+
+    if (area === "observatory") {
+        forestReturnPosition = { x: player.x, y: player.y };
+        currentArea = "observatory";
+        WORLD.width = OBSERVATORY_SIZE.width;
+        WORLD.height = OBSERVATORY_SIZE.height;
+        player.x = 260;
+        player.y = 1350;
+        player.direction = "up";
+        document.getElementById("locationName").textContent = "The Observatory";
+        showMessage(
+            "AREA 02 — THE OBSERVATORY",
+            "Where the Stars Remember",
+            "Beyond the forest stands an ancient observatory. Its telescope is still pointed towards the heavens, and three pieces of a constellation have fallen somewhere inside."
+        );
+    } else {
+        currentArea = "forest";
+        WORLD.width = FOREST_SIZE.width;
+        WORLD.height = FOREST_SIZE.height;
+        player.x = forestReturnPosition.x;
+        player.y = forestReturnPosition.y + 100;
+        player.direction = "down";
+        document.getElementById("locationName").textContent = "The Enchanted Forest";
+        showMessage(
+            "THE ENCHANTED FOREST",
+            "Back where the journey began",
+            "The forest is still here, and everything you discovered remains yours. The Observatory will be waiting whenever you return."
+        );
+    }
+
+    camera.x = 0;
+    camera.y = 0;
+    updateGameSystemsUI();
 }
 
 function drawTree(tree) {
@@ -846,7 +1199,6 @@ function drawLantern(time) {
 // DRAW PLAYER
 // ============================================
 
-
 function drawPlayer(time) {
     ctx.save();
 
@@ -973,23 +1325,23 @@ function drawPlayer(time) {
 // ============================================
 
 function findNearbyObject() {
-
     let closest = null;
     let closestDistance = Infinity;
 
-    for (const object of objects) {
+    const availableObjects = currentArea === "forest"
+        ? objects
+        : observatoryObjects;
 
+    for (const object of availableObjects) {
         if (object.discovered) continue;
+        if (object.id === "observatory-chamber" && !observatoryQuest.puzzleSolved) continue;
 
         const distance = Math.hypot(
             player.x - object.x,
             player.y - object.y
         );
 
-        if (
-            distance < object.radius &&
-            distance < closestDistance
-        ) {
+        if (distance < object.radius && distance < closestDistance) {
             closest = object;
             closestDistance = distance;
         }
@@ -998,82 +1350,185 @@ function findNearbyObject() {
     return closest;
 }
 
-
 function interact() {
-
     if (!gameStarted) return;
 
     const object = findNearbyObject();
-
     if (!object) return;
 
     activeObject = object;
 
-    // THE FORGOTTEN LANTERN.
-    if (object.id === "lantern") {
+    if (currentArea === "forest") {
+        if (object.id === "observatory-gate") {
+            if (!gameQuest.completed) {
+                showMessage(
+                    "A SEALED WAY",
+                    "The Observatory is asleep",
+                    "The arch is cold. The Moonlit Memory may be the key to waking it. Finish the forest's lost-memory quest first."
+                );
+                return;
+            }
 
-        object.discovered = true;
+            switchArea("observatory");
+            return;
+        }
 
-        discoveries++;
-        gameQuest.lanternFound = true;
-
-        updateDiscoveryCounter();
-
-        const completed = checkForestQuest();
-
-        showMessage(
-            "DISCOVERY 01",
-            "The Forgotten Lantern",
-            "A little light can change the way an entire world looks. Perhaps this one was waiting for you."
-        );
-
+        if (object.id === "lantern") {
+            object.discovered = true;
+            discoveries++;
+            gameQuest.lanternFound = true;
+            updateDiscoveryCounter();
+            checkForestQuest();
+            showMessage(
+                "DISCOVERY 01",
+                "The Forgotten Lantern",
+                "A little light can change the way an entire world looks. Perhaps this one was waiting for you."
+            );
+        } else if (object.id === "pond") {
+            object.discovered = true;
+            discoveries++;
+            gameQuest.pondFound = true;
+            updateDiscoveryCounter();
+            const completed = checkForestQuest();
+            showMessage(
+                completed ? "QUEST COMPLETE" : "THE MOONLIT POND",
+                completed ? "The Moonlit Memory" : "Something beneath the water...",
+                completed
+                    ? "The lantern, the fragments and the pond have revealed something beautiful. You have recovered the Moonlit Memory."
+                    : "The water remembers things the world has forgotten. Three fragments are scattered throughout this forest. Find them, and perhaps the pond will reveal its secret."
+            );
+        } else if (memoryFragmentNames[object.id]) {
+            object.discovered = true;
+            discoveries++;
+            gameQuest.fragmentsFound++;
+            const itemName = memoryFragmentNames[object.id];
+            gameInventory.push(itemName);
+            updateDiscoveryCounter();
+            const completed = checkForestQuest();
+            showMessage(
+                "MEMORY FRAGMENT " + gameQuest.fragmentsFound + " / 3",
+                completed ? "The Last Piece" : itemName,
+                completed
+                    ? "Every fragment has been found. Your discoveries have unlocked the Moonlit Memory. The forest has another secret to share."
+                    : "A tiny piece of something beautiful. It seems this forest has been holding onto memories."
+            );
+        }
+        return;
     }
 
-    // THE MOONLIT POND.
-    else if (object.id === "pond") {
-
+    // Observatory interactions.
+    if (object.id === "observatory-return") {
+        switchArea("forest");
+    } else if (object.id.startsWith("star-fragment")) {
         object.discovered = true;
-        gameQuest.pondFound = true;
-
-        const completed = checkForestQuest();
-
-        showMessage(
-            completed ? "QUEST COMPLETE" : "THE MOONLIT POND",
-            completed ? "The Moonlit Memory" : "Something beneath the water...",
-            completed
-                ? "The lantern, the fragments and the pond have revealed something beautiful. You have recovered the Moonlit Memory."
-                : "The water remembers things the world has forgotten. Three fragments are scattered throughout this forest. Find them, and perhaps the pond will reveal its secret."
-        );
-
-    }
-
-    // MEMORY FRAGMENTS.
-    else if (memoryFragmentNames[object.id]) {
-
-        object.discovered = true;
-
         discoveries++;
-        gameQuest.fragmentsFound++;
-
-        const itemName = memoryFragmentNames[object.id];
-
-        gameInventory.push(itemName);
-
+        observatoryQuest.fragmentsFound++;
+        const fragmentName = "Celestial Fragment " + observatoryQuest.fragmentsFound;
+        gameInventory.push(fragmentName);
         updateDiscoveryCounter();
-
-        const completed = checkForestQuest();
-
+        updateGameSystemsUI();
         showMessage(
-            "MEMORY FRAGMENT " + gameQuest.fragmentsFound + " / 3",
-            completed ? "The Last Piece" : itemName,
-            completed
-                ? "Every fragment has been found. Your discoveries have unlocked the Moonlit Memory. The forest has another secret to share."
-                : "A tiny piece of something beautiful. It seems this forest has been holding onto memories."
+            "OBSERVATORY DISCOVERY " + observatoryQuest.fragmentsFound + " / 3",
+            "A Piece of the Constellation",
+            "A star has fallen from its place in the sky. Its light feels strangely familiar. Find all three fragments, then take them to the constellation console."
         );
-
+    } else if (object.id === "observatory-telescope") {
+        object.discovered = true;
+        observatoryQuest.telescopeRead = true;
+        updateGameSystemsUI();
+        showMessage(
+            "THE ASTRONOMER'S TELESCOPE",
+            "Three lights. One pattern.",
+            "Through the telescope, three constellations become clear: the Moon, the Star, and the Heart. The console below appears to follow that exact order."
+        );
+    } else if (object.id === "observatory-console") {
+        if (observatoryQuest.fragmentsFound < 3) {
+            showMessage(
+                "THE CONSTELLATION CONSOLE",
+                "The pattern is incomplete",
+                "The console has three empty places. Find all three celestial fragments before trying to restore the constellation."
+            );
+        } else {
+            openConstellationPuzzle();
+        }
+    } else if (object.id === "observatory-chamber") {
+        object.discovered = true;
+        observatoryQuest.chamberEntered = true;
+        discoveries++;
+        gameInventory.push("The Observatory's Secret");
+        updateDiscoveryCounter();
+        updateGameSystemsUI();
+        showMessage(
+            "SECRET DISCOVERY",
+            "The Celestial Chamber",
+            "Behind the constellation is a quiet room filled with the light of a thousand distant stars. At its centre rests a message: even the smallest light can become someone's entire universe."
+        );
     }
 }
+                    background:#8e142d;color:#fff1b8;border:1px solid #d4af37;cursor:pointer">
+                    CLOSE
+                </button>
+            </div>
+        `;
+        document.getElementById("game").appendChild(panel);
 
+        panel.querySelectorAll("[data-star]").forEach(button => {
+            button.style.cssText += `
+                width:72px;height:68px;border:1px solid #d4af37;
+                background:#14263d;color:#fff1b8;cursor:pointer;border-radius:8px;
+            `;
+            button.addEventListener("click", () => chooseConstellationSymbol(button.dataset.star));
+        });
+
+        panel.querySelector("#constellationClose").addEventListener("click", () => {
+            panel.style.display = "none";
+        });
+    }
+
+    panel.dataset.progress = "0";
+    panel.querySelector("#constellationStatus").textContent = "Choose the first symbol.";
+    panel.style.display = "flex";
+}
+
+function chooseConstellationSymbol(symbol) {
+    const panel = document.getElementById("constellationPuzzle");
+    if (!panel || panel.style.display === "none") return;
+
+    let progress = Number(panel.dataset.progress || 0);
+
+    if (symbol !== observatoryStarSequence[progress]) {
+        panel.dataset.progress = "0";
+        panel.querySelector("#constellationStatus").textContent =
+            "The stars fall out of alignment. Try again from the Moon.";
+        return;
+    }
+
+    progress++;
+    panel.dataset.progress = String(progress);
+
+    if (progress < observatoryStarSequence.length) {
+        panel.querySelector("#constellationStatus").textContent =
+            "Correct. " + progress + " of 3 symbols aligned.";
+        return;
+    }
+
+    observatoryQuest.puzzleSolved = true;
+    const consoleObject = observatoryObjects.find(o => o.id === "observatory-console");
+    if (consoleObject) consoleObject.discovered = true;
+
+    discoveries++;
+    gameInventory.push("The Restored Constellation");
+    updateDiscoveryCounter();
+    updateGameSystemsUI();
+
+    panel.style.display = "none";
+
+    showMessage(
+        "OBSERVATORY PUZZLE COMPLETE",
+        "The Stars Remember",
+        "The three fragments rise into the air and return to their places. A hidden chamber awakens on the eastern side of the observatory."
+    );
+}
 
 // ============================================
 // MEMORY FRAGMENT VISUALS
@@ -1270,7 +1725,6 @@ function closeSystemsPanel() {
 }
 
 function updateGameSystemsUI() {
-
     if (!systemsPanel) return;
 
     const title = systemsPanel.querySelector("#systemsTitle");
@@ -1278,75 +1732,46 @@ function updateGameSystemsUI() {
     const body = systemsPanel.querySelector("#systemsBody");
 
     if (systemsPanelTab === "inventory") {
-
         subtitle.textContent = "THINGS YOU HAVE FOUND";
         title.textContent = "Inventory";
 
-        if (gameInventory.length === 0) {
-
-            body.textContent =
-                "Your inventory is empty. Explore the forest and discover what it holds.";
-
-        } else {
-
-            body.innerHTML = gameInventory.map(item =>
-                `<div style="
-                    padding:9px 0;
-                    border-bottom:1px solid rgba(212,175,55,0.2);
-                ">✦ ${item}</div>`
-            ).join("");
-        }
-
-    } else {
-
-        subtitle.textContent = "YOUR CURRENT ADVENTURE";
-        title.textContent = "Quest Journal";
-
-        body.innerHTML = `
-            <div style="color:#d4af37;margin-bottom:12px">
-                THE LOST MEMORIES
-            </div>
-
-            <div>
-                ${gameQuest.lanternFound ? "✓" : "○"}
-                Discover the Forgotten Lantern
-            </div>
-
-            <div>
-                ${gameQuest.fragmentsFound >= 1 ? "✓" : "○"}
-                Find the first memory fragment
-            </div>
-
-            <div>
-                ${gameQuest.fragmentsFound >= 2 ? "✓" : "○"}
-                Find the second memory fragment
-            </div>
-
-            <div>
-                ${gameQuest.fragmentsFound >= 3 ? "✓" : "○"}
-                Find the third memory fragment
-            </div>
-
-            <div>
-                ${gameQuest.pondFound ? "✓" : "○"}
-                Investigate the Moonlit Pond
-            </div>
-
-            <div style="
-                margin-top:20px;
-                color:${gameQuest.completed ? "#ffe59a" : "#b7a98e"};
-            ">
-                ${gameQuest.completed
-                    ? "✦ QUEST COMPLETE — MOONLIT MEMORY UNLOCKED"
-                    : "Recover the lost memories of the forest."}
-            </div>
-        `;
+        body.innerHTML = gameInventory.length === 0
+            ? "Your inventory is empty. Explore the world and discover what it holds."
+            : gameInventory.map(item =>
+                `<div style="padding:9px 0;border-bottom:1px solid rgba(212,175,55,0.2)">✦ ${item}</div>`
+              ).join("");
+        return;
     }
+
+    subtitle.textContent = "YOUR CURRENT ADVENTURE";
+    title.textContent = "Quest Journal";
+
+    body.innerHTML = `
+        <div style="color:#d4af37;margin-bottom:12px">THE LOST MEMORIES</div>
+        <div>${gameQuest.lanternFound ? "✓" : "○"} Discover the Forgotten Lantern</div>
+        <div>${gameQuest.fragmentsFound >= 1 ? "✓" : "○"} Find the first memory fragment</div>
+        <div>${gameQuest.fragmentsFound >= 2 ? "✓" : "○"} Find the second memory fragment</div>
+        <div>${gameQuest.fragmentsFound >= 3 ? "✓" : "○"} Find the third memory fragment</div>
+        <div>${gameQuest.pondFound ? "✓" : "○"} Investigate the Moonlit Pond</div>
+        <div style="margin-top:12px;color:${gameQuest.completed ? "#ffe59a" : "#b7a98e"}">
+            ${gameQuest.completed ? "✦ QUEST COMPLETE — MOONLIT MEMORY UNLOCKED" : "Recover the lost memories of the forest."}
+        </div>
+
+        <div style="color:#d4af37;margin:24px 0 12px">THE OBSERVATORY</div>
+        <div>${observatoryQuest.fragmentsFound >= 1 ? "✓" : "○"} Recover the first celestial fragment</div>
+        <div>${observatoryQuest.fragmentsFound >= 2 ? "✓" : "○"} Recover the second celestial fragment</div>
+        <div>${observatoryQuest.fragmentsFound >= 3 ? "✓" : "○"} Recover the third celestial fragment</div>
+        <div>${observatoryQuest.telescopeRead ? "✓" : "○"} Study the astronomer's telescope</div>
+        <div>${observatoryQuest.puzzleSolved ? "✓" : "○"} Restore the constellation</div>
+        <div>${observatoryQuest.chamberEntered ? "✓" : "○"} Enter the Celestial Chamber</div>
+        <div style="margin-top:12px;color:${observatoryQuest.chamberEntered ? "#ffe59a" : "#b7a98e"}">
+            ${observatoryQuest.chamberEntered ? "✦ OBSERVATORY COMPLETE — SECRET FOUND" : "Find the three fragments and restore the stars."}
+        </div>
+    `;
 }
 
 // Create the interface once.
 createGameSystemsUI();
-
 
 // ============================================
 // GAME MESSAGE
@@ -1442,79 +1867,57 @@ function updateDiscoveryCounter() {
 // ============================================
 
 function gameLoop(time) {
-
     if (!gameStarted) return;
 
-    const deltaTime = Math.min(
-        (time - lastTime) / 1000,
-        0.05
-    );
-
+    const deltaTime = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
 
     const overlay = document.getElementById("gameMessage");
+    const puzzlePanel = document.getElementById("constellationPuzzle");
 
-    // Pause movement while a message is open.
-if (
-    (!overlay || overlay.style.display === "none") &&
-    (!systemsPanel || systemsPanel.style.display === "none")
-) {
-    updatePlayer(deltaTime);
-}
+    if (
+        (!overlay || overlay.style.display === "none") &&
+        (!systemsPanel || systemsPanel.style.display === "none") &&
+        (!puzzlePanel || puzzlePanel.style.display === "none")
+    ) {
+        updatePlayer(deltaTime);
+    }
 
     updateCamera();
 
-    ctx.clearRect(
-        0,
-        0,
-        canvas.clientWidth,
-        canvas.clientHeight
-    );
-
+    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     ctx.save();
-
     ctx.translate(-camera.x, -camera.y);
 
     drawGround();
-    drawForestDecorations(time);
-    drawMemoryFragments(time);
-    drawPond(time);
-    drawLantern(time);
 
-    // Sort trees and player by vertical position.
-    const renderables = [
-        ...trees.map(tree => ({
-            y: tree.y,
-            draw: () => drawTree(tree)
-        })),
-        {
-            y: player.y,
-            draw: () => drawPlayer(time)
-        }
-    ];
+    if (currentArea === "forest") {
+        drawForestDecorations(time);
+        drawMemoryFragments(time);
+        drawPond(time);
+        drawLantern(time);
+        drawForestGate(time);
 
-    renderables.sort((a, b) => a.y - b.y);
-
-    renderables.forEach(item => item.draw());
+        const renderables = [
+            ...trees.map(tree => ({ y: tree.y, draw: () => drawTree(tree) })),
+            { y: player.y, draw: () => drawPlayer(time) }
+        ];
+        renderables.sort((a, b) => a.y - b.y);
+        renderables.forEach(item => item.draw());
+    } else {
+        drawObservatoryObjects(time);
+        drawPlayer(time);
+    }
 
     ctx.restore();
 
-    // Interaction prompt.
     const nearby = findNearbyObject();
-
     if (nearby) {
-
-        interactionPrompt.textContent =
-            "E  ·  " + nearby.name;
-
+        interactionPrompt.textContent = "E  ·  " + nearby.name;
         interactionPrompt.style.opacity = "1";
-
     } else {
-
         interactionPrompt.style.opacity = "0";
-
     }
 
     requestAnimationFrame(gameLoop);
 }
-
