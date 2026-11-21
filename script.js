@@ -1001,15 +1001,6 @@ function drawObservatoryObjects(time) {
         }
     });
 }
-            ctx.stroke();
-            ctx.fillStyle = "#fff1b8";
-            ctx.font = "32px Georgia";
-            ctx.textAlign = "center";
-            ctx.fillText("↶", x, y + 11);
-            ctx.restore();
-        }
-    });
-}
 
 function switchArea(area) {
     if (area === currentArea) return;
