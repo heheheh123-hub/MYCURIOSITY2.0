@@ -498,8 +498,7 @@ document.querySelectorAll(".control").forEach(button => {
         touch[direction] = true;
         button.setPointerCapture(event.pointerId);
     });
-
-    function release() {
+        function release() {
         touch[direction] = false;
     }
 
@@ -1456,7 +1455,45 @@ function interact() {
         );
     }
 }
-                    background:#8e142d;color:#fff1b8;border:1px solid #d4af37;cursor:pointer">
+
+function openConstellationPuzzle() {
+    let panel = document.getElementById("constellationPuzzle");
+
+    if (!panel) {
+        panel = document.createElement("div");
+        panel.id = "constellationPuzzle";
+        panel.style.cssText = `
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            background: rgba(2,5,11,0.94);
+            color: #fff1b8;
+            font-family: Georgia, serif;
+            text-align: center;
+            padding: 24px;
+        `;
+
+        panel.innerHTML = `
+            <div style="max-width:420px;width:100%">
+                <h2 style="color:#d4af37">THE CONSTELLATION</h2>
+                <p>Restore the three lights in their correct order.</p>
+                <div style="display:flex;justify-content:center;gap:14px;margin:28px 0">
+                    <button data-star="moon">☾</button>
+                    <button data-star="star">✦</button>
+                    <button data-star="heart">♥</button>
+                </div>
+                <p id="constellationStatus">Choose the first symbol.</p>
+                <button id="constellationClose" style="
+                    padding:12px 30px;
+                    margin-top:20px;
+                    background:#8e142d;
+                    color:#fff1b8;
+                    border:1px solid #d4af37;
+                    cursor:pointer">
                     CLOSE
                 </button>
             </div>
