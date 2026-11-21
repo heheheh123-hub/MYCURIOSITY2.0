@@ -647,105 +647,129 @@ function updateCamera() {
 // DRAW THE FOREST
 // ============================================
 
+
 function drawForestGround() {
+    const w = WORLD.width;
+    const h = WORLD.height;
 
-    // Deep forest ground.
-    ctx.fillStyle = "#10231f";
-    ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+    // Deep layered forest floor
+    const ground = ctx.createLinearGradient(0, 0, w, h);
+    ground.addColorStop(0, "#142c29");
+    ground.addColorStop(0.45, "#0b211f");
+    ground.addColorStop(1, "#071719");
 
-    // Richer ground texture.
-    for (let i = 0; i < 1100; i++) {
+    ctx.fillStyle = ground;
+    ctx.fillRect(0, 0, w, h);
 
-        const x = (i * 173) % WORLD.width;
-        const y = (i * 291) % WORLD.height;
+    // Organic patches of moss and vegetation
+    for (let i = 0; i < 180; i++) {
+        const x = (i * 397 + 83) % w;
+        const y = (i * 263 + 121) % h;
+        const radius = 35 + (i % 6) * 13;
 
-        if (i % 4 === 0) {
-            ctx.fillStyle = "rgba(135,170,105,0.075)";
-        } else if (i % 4 === 1) {
-            ctx.fillStyle = "rgba(0,0,0,0.09)";
-        } else if (i % 4 === 2) {
-            ctx.fillStyle = "rgba(75,115,95,0.07)";
-        } else {
-            ctx.fillStyle = "rgba(180,150,90,0.035)";
-        }
-
-        ctx.fillRect(x, y, 2 + (i % 4), 2 + (i % 3));
-    }
-
-    // Winding forest path.
-    ctx.beginPath();
-    ctx.moveTo(300, 1200);
-    ctx.bezierCurveTo(550, 1150, 650, 850, 900, 950);
-    ctx.bezierCurveTo(1100, 1050, 1200, 850, 1400, 780);
-    ctx.bezierCurveTo(1580, 710, 1680, 600, 1840, 650);
-
-    ctx.strokeStyle = "#46352d";
-    ctx.lineWidth = 145;
-    ctx.lineCap = "round";
-    ctx.stroke();
-
-    // Softer centre of the path.
-    ctx.strokeStyle = "rgba(194,151,91,0.12)";
-    ctx.lineWidth = 100;
-    ctx.stroke();
-
-    // Midnight atmosphere.
-    const atmosphere = ctx.createRadialGradient(
-        WORLD.width / 2,
-        WORLD.height / 2,
-        200,
-        WORLD.width / 2,
-        WORLD.height / 2,
-        1550
-    );
-
-    atmosphere.addColorStop(0, "rgba(4,12,28,0.02)");
-    atmosphere.addColorStop(1, "rgba(2,5,17,0.38)");
-
-    ctx.fillStyle = atmosphere;
-    ctx.fillRect(0, 0, WORLD.width, WORLD.height);
-
-    // Helper for soft environmental lighting.
-    function addLight(x, y, radius, colour) {
-
-        const light = ctx.createRadialGradient(
-            x, y, 0,
-            x, y, radius
+        const patch = ctx.createRadialGradient(
+            x, y, 2, x, y, radius
         );
 
-        light.addColorStop(0, colour);
-        light.addColorStop(1, "rgba(255,220,130,0)");
+        patch.addColorStop(0, "rgba(63,111,69,0.16)");
+        patch.addColorStop(1, "rgba(63,111,69,0)");
 
-        ctx.fillStyle = light;
-
+        ctx.fillStyle = patch;
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Lantern's warm golden light.
-    addLight(
-        850,
-        900,
-        230,
-        "rgba(255,174,65,0.22)"
+    // Fine ground texture
+    for (let i = 0; i < 1800; i++) {
+        const x = (i * 173 + 41) % w;
+        const y = (i * 291 + 97) % h;
+
+        ctx.fillStyle = i % 3 === 0
+            ? "rgba(177,187,119,0.09)"
+            : "rgba(0,0,0,0.11)";
+
+        ctx.fillRect(x, y, 2 + i % 3, 2);
+    }
+
+    // Winding path
+    function tracePath() {
+        ctx.beginPath();
+        ctx.moveTo(300, 1200);
+        ctx.bezierCurveTo(550, 1150, 650, 850, 900, 950);
+        ctx.bezierCurveTo(1100, 1050, 1200, 850, 1400, 780);
+        ctx.bezierCurveTo(1580, 710, 1680, 600, 1840, 650);
+    }
+
+    // Path shadow
+    tracePath();
+    ctx.strokeStyle = "rgba(0,0,0,0.38)";
+    ctx.lineWidth = 178;
+    ctx.lineCap = "round";
+    ctx.stroke();
+
+    // Path edges
+    tracePath();
+    ctx.strokeStyle = "#332d2b";
+    ctx.lineWidth = 155;
+    ctx.stroke();
+
+    // Main earthy path
+    tracePath();
+    const pathGradient = ctx.createLinearGradient(0, 700, 0, 1250);
+    pathGradient.addColorStop(0, "#796044");
+    pathGradient.addColorStop(0.5, "#594331");
+    pathGradient.addColorStop(1, "#493629");
+
+    ctx.strokeStyle = pathGradient;
+    ctx.lineWidth = 137;
+    ctx.stroke();
+
+    // Soft light down the middle
+    tracePath();
+    ctx.strokeStyle = "rgba(218,177,112,0.12)";
+    ctx.lineWidth = 83;
+    ctx.stroke();
+
+    // Scattered path stones
+    for (let i = 0; i < 90; i++) {
+        const x = (i * 137 + 300) % w;
+        const y = (i * 211 + 450) % h;
+
+        ctx.fillStyle = "rgba(20,17,17,0.22)";
+        ctx.beginPath();
+        ctx.ellipse(x, y, 5 + i % 8, 3 + i % 4, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Moonlight around the pond
+    function light(x, y, radius, colour) {
+        const glow = ctx.createRadialGradient(
+            x, y, 0, x, y, radius
+        );
+
+        glow.addColorStop(0, colour);
+        glow.addColorStop(1, "rgba(0,0,0,0)");
+
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    }
+
+    light(1840, 650, 370, "rgba(78,133,210,0.19)");
+    light(850, 900, 290, "rgba(255,169,65,0.16)");
+    light(1250, 950, 550, "rgba(170,105,48,0.055)");
+
+    // Dark atmospheric edges
+    const vignette = ctx.createRadialGradient(
+        w / 2, h / 2, 250,
+        w / 2, h / 2, 1550
     );
 
-    // Moonlight around the pond.
-    addLight(
-        1840,
-        650,
-        310,
-        "rgba(100,155,230,0.20)"
-    );
+    vignette.addColorStop(0, "rgba(1,7,14,0)");
+    vignette.addColorStop(1, "rgba(1,5,12,0.55)");
 
-    // Subtle forest-wide golden ambience.
-    addLight(
-        1250,
-        950,
-        500,
-        "rgba(190,130,65,0.035)"
-    );
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, w, h);
 }
 
 // Select the correct ground renderer for the active area.
@@ -1038,42 +1062,152 @@ function switchArea(area) {
     updateGameSystemsUI();
 }
 
-function drawTree(tree) {
 
+function drawTree(tree) {
     const { x, y, size, shade } = tree;
 
     ctx.save();
     ctx.translate(x, y);
 
-    // Shadow.
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    // Ground shadow
+    ctx.fillStyle = "rgba(0,0,0,0.38)";
     ctx.beginPath();
-    ctx.ellipse(5, 10, size * 0.65, size * 0.3, 0, 0, Math.PI * 2);
+    ctx.ellipse(5, 12, size * 0.9, size * 0.34, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Trunk.
-    ctx.fillStyle = "#39251d";
-    ctx.fillRect(-size * 0.13, -size * 0.1, size * 0.26, size * 0.7);
+    // Exposed roots
+    ctx.strokeStyle = "#30251f";
+    ctx.lineWidth = Math.max(5, size * 0.12);
+    ctx.lineCap = "round";
 
-    // Tree crown.
-    const gradient = ctx.createRadialGradient(
-        -size * 0.2, -size * 0.4, 2,
-        0, -size * 0.1, size
+    for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, size * 0.25);
+        ctx.quadraticCurveTo(
+            i * size * 0.2,
+            size * 0.55,
+            i * size * 0.62,
+            size * 0.45
+        );
+        ctx.stroke();
+    }
+
+    // Main trunk
+    const trunk = ctx.createLinearGradient(
+        -size * 0.2, 0, size * 0.2, 0
     );
 
-    gradient.addColorStop(0, shade > 0.5 ? "#466d45" : "#385d42");
-    gradient.addColorStop(1, "#102d25");
+    trunk.addColorStop(0, "#251b1b");
+    trunk.addColorStop(0.45, "#62402d");
+    trunk.addColorStop(1, "#241b1a");
 
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = trunk;
     ctx.beginPath();
-    ctx.arc(0, -size * 0.35, size * 0.72, 0, Math.PI * 2);
+    ctx.moveTo(-size * 0.18, size * 0.35);
+    ctx.lineTo(-size * 0.12, -size * 0.45);
+    ctx.lineTo(size * 0.12, -size * 0.45);
+    ctx.lineTo(size * 0.2, size * 0.35);
+    ctx.closePath();
     ctx.fill();
 
-    // Subtle gold leaves.
-    ctx.fillStyle = "rgba(212,175,55,0.22)";
+    // Branches
+    ctx.strokeStyle = "#493027";
+    ctx.lineWidth = size * 0.11;
+    ctx.lineCap = "round";
+
     ctx.beginPath();
-    ctx.arc(-size * 0.2, -size * 0.65, size * 0.12, 0, Math.PI * 2);
+    ctx.moveTo(0, -size * 0.12);
+    ctx.lineTo(-size * 0.48, -size * 0.65);
+    ctx.moveTo(0, -size * 0.2);
+    ctx.lineTo(size * 0.46, -size * 0.7);
+    ctx.stroke();
+
+    // Layered canopy
+    const colours = shade > 0.5
+        ? ["#294c38", "#356247", "#477553", "#203e32"]
+        : ["#203e32", "#2d523c", "#3b6547", "#19352c"];
+
+    const clusters = [
+        [-0.38, -0.48, 0.53],
+        [0.35, -0.48, 0.55],
+        [0, -0.8, 0.59],
+        [-0.18, -0.18, 0.48],
+        [0.28, -0.16, 0.47],
+        [0, -0.48, 0.68]
+    ];
+
+    // Main canopy shadow
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(0, -size * 0.42, size * 0.86, size * 0.7, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    clusters.forEach((cluster, i) => {
+        const [cx, cy, scale] = cluster;
+        const r = size * scale;
+
+        const gradient = ctx.createRadialGradient(
+            cx * size - r * 0.3,
+            cy * size - r * 0.4,
+            2,
+            cx * size,
+            cy * size,
+            r
+        );
+
+        gradient.addColorStop(0, colours[2]);
+        gradient.addColorStop(0.55, colours[i % 2]);
+        gradient.addColorStop(1, colours[3]);
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(
+            cx * size,
+            cy * size,
+            r * 0.92,
+            r * 0.72,
+            0,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+    });
+
+    // Individual leaf highlights
+    for (let i = 0; i < 13; i++) {
+        const angle = i * 2.4;
+        const radius = size * (0.15 + (i % 4) * 0.12);
+
+        const lx = Math.cos(angle) * radius;
+        const ly = -size * 0.48 + Math.sin(angle) * radius * 0.62;
+
+        ctx.fillStyle = i % 3 === 0
+            ? "rgba(212,175,55,0.38)"
+            : "rgba(132,174,112,0.22)";
+
+        ctx.beginPath();
+        ctx.ellipse(
+            lx, ly,
+            size * 0.065,
+            size * 0.035,
+            angle,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+    }
+
+    // Subtle rim lighting
+    ctx.strokeStyle = "rgba(166,193,130,0.16)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(
+        0, -size * 0.43,
+        size * 0.72,
+        size * 0.55,
+        0, Math.PI, Math.PI * 2
+    );
+    ctx.stroke();
 
     ctx.restore();
 }
