@@ -374,63 +374,141 @@ function random() {
     return (seed - 1) / 2147483646;
 }
 
+
 function generateForest() {
 
-    for (let i = 0; i < 175; i++) {
+    trees.length = 0;
 
-        const x = 80 + random() * (WORLD.width - 160);
-        const y = 80 + random() * (WORLD.height - 160);
+    // These are woodland groves, not randomly scattered trees.
+    const groves = [
+        { x: 180,  y: 250,  rx: 210, ry: 170, count: 15 },
+        { x: 850,  y: 230,  rx: 230, ry: 150, count: 17 },
+        { x: 1450, y: 230,  rx: 230, ry: 160, count: 17 },
+        { x: 2250, y: 300,  rx: 190, ry: 220, count: 16 },
+        { x: 2350, y: 950,  rx: 170, ry: 250, count: 17 },
+        { x: 2200, y: 1580, rx: 250, ry: 180, count: 18 },
+        { x: 1450, y: 1690, rx: 260, ry: 150, count: 17 },
+        { x: 650,  y: 1660, rx: 260, ry: 170, count: 17 },
+        { x: 160,  y: 1250, rx: 140, ry: 280, count: 15 },
+        { x: 1050, y: 1250, rx: 160, ry: 130, count: 10 }
+    ];
 
-        // Keep the starting area and paths relatively clear.
-        if (
-            Math.hypot(x - 500, y - 1050) < 250 ||
-            Math.hypot(x - 850, y - 900) < 125 ||
-            Math.hypot(x - 1840, y - 650) < 180
-        ) {
-            continue;
+    // Main trails and branches. Trees are kept away from these.
+    const trails = [
+        [[300,1200],[500,1050],[700,930],[850,900]],
+        [[850,900],[1050,970],[1250,880],[1450,800],[1600,700]],
+        [[1600,700],[1720,610],[1840,650]],
+        [[500,1050],[500,930],[500,840]],
+        [[500,1050],[600,1190]],
+        [[1250,880],[1250,1050],[1100,1250]],
+        [[1840,650],[2050,620],[2200,750]],
+        [[1840,650],[1950,850],[2050,1050]]
+    ];
+
+    function distanceToSegment(px, py, ax, ay, bx, by) {
+        const dx = bx - ax;
+        const dy = by - ay;
+        const length = dx * dx + dy * dy;
+
+        let t = length === 0 ? 0 :
+            ((px - ax) * dx + (py - ay) * dy) / length;
+
+        t = Math.max(0, Math.min(1, t));
+
+        const nearestX = ax + t * dx;
+        const nearestY = ay + t * dy;
+
+        return Math.hypot(px - nearestX, py - nearestY);
+    }
+
+    function tooCloseToTrail(x, y) {
+        for (const trail of trails) {
+            for (let i = 0; i < trail.length - 1; i++) {
+                const a = trail[i];
+                const b = trail[i + 1];
+
+                if (
+                    distanceToSegment(x, y, a[0], a[1], b[0], b[1]) < 125
+                ) {
+                    return true;
+                }
+            }
         }
 
+        return false;
+    }
+
+    const landmarks = [
+        { x: 500, y: 1050, r: 170 },
+        { x: 850, y: 900, r: 145 },
+        { x: 1840, y: 650, r: 205 },
+        { x: 600, y: 1190, r: 100 },
+        { x: 1250, y: 880, r: 100 },
+        { x: 1600, y: 700, r: 115 },
+        { x: 500, y: 840, r: 130 }
+    ];
+
+    function tooCloseToLandmark(x, y) {
+        return landmarks.some(point =>
+            Math.hypot(x - point.x, y - point.y) < point.r
+        );
+    }
+
+    // Fill each grove with irregularly spaced trees.
+    groves.forEach(grove => {
+
+        let placed = 0;
+        let attempts = 0;
+
+        while (placed < grove.count && attempts < grove.count * 12) {
+            attempts++;
+
+            const angle = random() * Math.PI * 2;
+            const spread = Math.sqrt(random());
+
+            const x = grove.x +
+                Math.cos(angle) * grove.rx * spread;
+
+            const y = grove.y +
+                Math.sin(angle) * grove.ry * spread;
+
+            if (
+                x < 70 || x > WORLD.width - 70 ||
+                y < 70 || y > WORLD.height - 70 ||
+                tooCloseToTrail(x, y) ||
+                tooCloseToLandmark(x, y)
+            ) {
+                continue;
+            }
+
+            trees.push({
+                x,
+                y,
+                size: 43 + random() * 35,
+                shade: random()
+            });
+
+            placed++;
+        }
+    });
+
+    // A few ancient trees at the outer edges.
+    const ancientTrees = [
+        [75, 500], [2500, 500], [2500, 1450],
+        [400, 1800], [1100, 1820], [1800, 1820],
+        [2520, 180], [80, 1650]
+    ];
+
+    ancientTrees.forEach(([x, y]) => {
         trees.push({
             x,
             y,
-            size: 35 + random() * 35,
+            size: 85 + random() * 25,
             shade: random()
         });
-    }
-
-    // Decorative trees around the outer world.
-    for (let i = 0; i < 45; i++) {
-
-        const side = Math.floor(random() * 4);
-
-        let x;
-        let y;
-
-        if (side === 0) {
-            x = random() * WORLD.width;
-            y = 35 + random() * 100;
-        } else if (side === 1) {
-            x = random() * WORLD.width;
-            y = WORLD.height - 135 + random() * 100;
-        } else if (side === 2) {
-            x = 35 + random() * 100;
-            y = random() * WORLD.height;
-        } else {
-            x = WORLD.width - 135 + random() * 100;
-            y = random() * WORLD.height;
-        }
-
-        trees.push({
-            x,
-            y,
-            size: 65 + random() * 40,
-            shade: random()
-        });
-    }
+    });
 }
 
-generateForest();
-generateForestDecorations();
 
 // ============================================
 // CANVAS RESIZING
@@ -648,129 +726,189 @@ function updateCamera() {
 // ============================================
 
 
-function drawForestGround() {
-    const w = WORLD.width;
-    const h = WORLD.height;
 
-    // Deep layered forest floor
-    const ground = ctx.createLinearGradient(0, 0, w, h);
-    ground.addColorStop(0, "#142c29");
-    ground.addColorStop(0.45, "#0b211f");
-    ground.addColorStop(1, "#071719");
+function drawForestGround() {
+
+    // Deep midnight-green forest floor.
+    const ground = ctx.createLinearGradient(0, 0, WORLD.width, WORLD.height);
+    ground.addColorStop(0, "#172b25");
+    ground.addColorStop(0.5, "#10251f");
+    ground.addColorStop(1, "#091b1a");
 
     ctx.fillStyle = ground;
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillRect(0, 0, WORLD.width, WORLD.height);
 
-    // Organic patches of moss and vegetation
-    for (let i = 0; i < 180; i++) {
-        const x = (i * 397 + 83) % w;
-        const y = (i * 263 + 121) % h;
+    // Organic patches of moss and woodland colour.
+    for (let i = 0; i < 95; i++) {
+        const x = (i * 283 + 120) % WORLD.width;
+        const y = (i * 197 + 80) % WORLD.height;
         const radius = 35 + (i % 6) * 13;
 
-        const patch = ctx.createRadialGradient(
+        const moss = ctx.createRadialGradient(
             x, y, 2, x, y, radius
         );
 
-        patch.addColorStop(0, "rgba(63,111,69,0.16)");
-        patch.addColorStop(1, "rgba(63,111,69,0)");
+        moss.addColorStop(0, "rgba(92,126,75,0.13)");
+        moss.addColorStop(1, "rgba(65,105,70,0)");
 
-        ctx.fillStyle = patch;
+        ctx.fillStyle = moss;
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Fine ground texture
-    for (let i = 0; i < 1800; i++) {
-        const x = (i * 173 + 41) % w;
-        const y = (i * 291 + 97) % h;
+    // Fine ground texture.
+    for (let i = 0; i < 1400; i++) {
+        const x = (i * 173) % WORLD.width;
+        const y = (i * 291) % WORLD.height;
 
         ctx.fillStyle = i % 3 === 0
-            ? "rgba(177,187,119,0.09)"
-            : "rgba(0,0,0,0.11)";
+            ? "rgba(180,170,115,0.055)"
+            : "rgba(0,0,0,0.09)";
 
-        ctx.fillRect(x, y, 2 + i % 3, 2);
+        ctx.fillRect(x, y, 2 + (i % 4), 2 + (i % 3));
     }
 
-    // Winding path
-    function tracePath() {
+    // Each path is drawn in several layers to give it depth.
+    function drawTrail(drawShape, width, colour) {
         ctx.beginPath();
+        drawShape();
+
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.lineWidth = width;
+        ctx.strokeStyle = colour;
+        ctx.stroke();
+    }
+
+    function layeredTrail(drawShape, width) {
+        drawTrail(
+            drawShape,
+            width + 24,
+            "rgba(3,9,12,0.38)"
+        );
+
+        drawTrail(
+            drawShape,
+            width,
+            "#302b27"
+        );
+
+        drawTrail(
+            drawShape,
+            width - 15,
+            "#463a30"
+        );
+
+        drawTrail(
+            drawShape,
+            width - 38,
+            "rgba(151,112,72,0.16)"
+        );
+
+        drawTrail(
+            drawShape,
+            2,
+            "rgba(221,183,119,0.13)"
+        );
+    }
+
+    // Main trail: starting clearing to the lantern and memory trail.
+    layeredTrail(() => {
         ctx.moveTo(300, 1200);
-        ctx.bezierCurveTo(550, 1150, 650, 850, 900, 950);
-        ctx.bezierCurveTo(1100, 1050, 1200, 850, 1400, 780);
-        ctx.bezierCurveTo(1580, 710, 1680, 600, 1840, 650);
-    }
+        ctx.bezierCurveTo(420, 1130, 470, 1000, 650, 940);
+        ctx.bezierCurveTo(730, 910, 790, 900, 850, 900);
+        ctx.bezierCurveTo(1030, 900, 1080, 1000, 1250, 880);
+        ctx.bezierCurveTo(1390, 790, 1480, 720, 1600, 700);
+        ctx.bezierCurveTo(1700, 680, 1760, 640, 1840, 650);
+    }, 112);
 
-    // Path shadow
-    tracePath();
-    ctx.strokeStyle = "rgba(0,0,0,0.38)";
-    ctx.lineWidth = 178;
-    ctx.lineCap = "round";
-    ctx.stroke();
+    // Branch to the first moon fragment.
+    layeredTrail(() => {
+        ctx.moveTo(520, 1030);
+        ctx.bezierCurveTo(560, 1080, 570, 1130, 600, 1190);
+    }, 76);
 
-    // Path edges
-    tracePath();
-    ctx.strokeStyle = "#332d2b";
-    ctx.lineWidth = 155;
-    ctx.stroke();
+    // Branch towards the sealed observatory.
+    layeredTrail(() => {
+        ctx.moveTo(500, 1050);
+        ctx.bezierCurveTo(455, 990, 470, 900, 500, 840);
+    }, 82);
 
-    // Main earthy path
-    tracePath();
-    const pathGradient = ctx.createLinearGradient(0, 700, 0, 1250);
-    pathGradient.addColorStop(0, "#796044");
-    pathGradient.addColorStop(0.5, "#594331");
-    pathGradient.addColorStop(1, "#493629");
+    // A quieter trail leading deeper into the woods.
+    layeredTrail(() => {
+        ctx.moveTo(1250, 880);
+        ctx.bezierCurveTo(1300, 1000, 1190, 1120, 1100, 1250);
+        ctx.bezierCurveTo(1040, 1340, 1050, 1430, 1120, 1500);
+    }, 66);
 
-    ctx.strokeStyle = pathGradient;
-    ctx.lineWidth = 137;
-    ctx.stroke();
+    // Pond-side trail, making the water feel like a destination.
+    layeredTrail(() => {
+        ctx.moveTo(1840, 650);
+        ctx.bezierCurveTo(1970, 610, 2070, 650, 2180, 750);
+        ctx.bezierCurveTo(2240, 810, 2250, 900, 2210, 980);
+    }, 70);
 
-    // Soft light down the middle
-    tracePath();
-    ctx.strokeStyle = "rgba(218,177,112,0.12)";
-    ctx.lineWidth = 83;
-    ctx.stroke();
-
-    // Scattered path stones
+    // Small stones scattered along the trails.
     for (let i = 0; i < 90; i++) {
-        const x = (i * 137 + 300) % w;
-        const y = (i * 211 + 450) % h;
+        const x = (i * 137 + 80) % WORLD.width;
+        const y = (i * 223 + 160) % WORLD.height;
 
-        ctx.fillStyle = "rgba(20,17,17,0.22)";
+        if (i % 2 === 0) {
+            ctx.fillStyle = "rgba(173,151,119,0.18)";
+        } else {
+            ctx.fillStyle = "rgba(0,0,0,0.17)";
+        }
+
         ctx.beginPath();
-        ctx.ellipse(x, y, 5 + i % 8, 3 + i % 4, 0.3, 0, Math.PI * 2);
+        ctx.ellipse(
+            x, y,
+            3 + (i % 5),
+            2 + (i % 3),
+            i * 0.4,
+            0,
+            Math.PI * 2
+        );
         ctx.fill();
     }
 
-    // Moonlight around the pond
-    function light(x, y, radius, colour) {
-        const glow = ctx.createRadialGradient(
-            x, y, 0, x, y, radius
+    // Lantern's warm clearing.
+    function addLight(x, y, radius, colour) {
+        const light = ctx.createRadialGradient(
+            x, y, 0,
+            x, y, radius
         );
 
-        glow.addColorStop(0, colour);
-        glow.addColorStop(1, "rgba(0,0,0,0)");
+        light.addColorStop(0, colour);
+        light.addColorStop(1, "rgba(255,220,130,0)");
 
-        ctx.fillStyle = glow;
-        ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        ctx.fillStyle = light;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
     }
 
-    light(1840, 650, 370, "rgba(78,133,210,0.19)");
-    light(850, 900, 290, "rgba(255,169,65,0.16)");
-    light(1250, 950, 550, "rgba(170,105,48,0.055)");
+    addLight(850, 900, 260, "rgba(255,174,65,0.18)");
 
-    // Dark atmospheric edges
-    const vignette = ctx.createRadialGradient(
-        w / 2, h / 2, 250,
-        w / 2, h / 2, 1550
+    // A cool moonlit sanctuary around the pond.
+    addLight(1840, 650, 340, "rgba(100,155,230,0.20)");
+
+    // A little golden light around the observatory entrance.
+    addLight(500, 840, 190, "rgba(212,175,55,0.12)");
+
+    // Atmospheric darkness around the edges.
+    const atmosphere = ctx.createRadialGradient(
+        1300, 950, 300,
+        1300, 950, 1550
     );
 
-    vignette.addColorStop(0, "rgba(1,7,14,0)");
-    vignette.addColorStop(1, "rgba(1,5,12,0.55)");
+    atmosphere.addColorStop(0, "rgba(4,12,28,0.01)");
+    atmosphere.addColorStop(1, "rgba(2,5,17,0.42)");
 
-    ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = atmosphere;
+    ctx.fillRect(0, 0, WORLD.width, WORLD.height);
 }
+
 
 // Select the correct ground renderer for the active area.
 function drawGround() {
@@ -1216,106 +1354,335 @@ function drawTree(tree) {
 // DRAW MOONLIT POND
 // ============================================
 
-function drawPond(time) {
 
+function drawPond(time) {
     const x = 1840;
     const y = 650;
-
-    const pulse = Math.sin(time * 0.0015) * 4;
+    const pulse = Math.sin(time * 0.0012);
 
     ctx.save();
 
-    // Outer glow.
-    const glow = ctx.createRadialGradient(
-        x, y, 20,
-        x, y, 230 + pulse
+    // Wide moonlit atmosphere around the pond.
+    const atmosphere = ctx.createRadialGradient(x, y, 25, x, y, 310);
+    atmosphere.addColorStop(0, "rgba(67,112,155,0.22)");
+    atmosphere.addColorStop(0.55, "rgba(40,76,112,0.10)");
+    atmosphere.addColorStop(1, "rgba(20,40,65,0)");
+
+    ctx.fillStyle = atmosphere;
+    ctx.beginPath();
+    ctx.arc(x, y, 310, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Shoreline shadow.
+    ctx.fillStyle = "#091a25";
+    ctx.beginPath();
+    ctx.ellipse(x, y + 8, 173, 116, -0.12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer shoreline.
+    const shore = ctx.createRadialGradient(x - 25, y - 35, 15, x, y, 175);
+    shore.addColorStop(0, "#345044");
+    shore.addColorStop(0.72, "#263e39");
+    shore.addColorStop(1, "#142b30");
+
+    ctx.fillStyle = shore;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 163, 105, -0.12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Deep water.
+    const water = ctx.createLinearGradient(x - 100, y - 80, x + 100, y + 90);
+    water.addColorStop(0, "#294d69");
+    water.addColorStop(0.45, "#142f4b");
+    water.addColorStop(1, "#081c32");
+
+    ctx.fillStyle = water;
+    ctx.beginPath();
+    ctx.ellipse(x, y - 3, 139, 84, -0.12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Moon reflection.
+    const reflection = ctx.createRadialGradient(
+        x - 15, y - 30, 2,
+        x - 15, y - 30, 95
     );
+    reflection.addColorStop(0, "rgba(255,239,190,0.42)");
+    reflection.addColorStop(0.35, "rgba(212,175,55,0.17)");
+    reflection.addColorStop(1, "rgba(212,175,55,0)");
 
-    glow.addColorStop(0, "rgba(212,175,55,0.15)");
-    glow.addColorStop(1, "rgba(212,175,55,0)");
-
-    ctx.fillStyle = glow;
+    ctx.fillStyle = reflection;
     ctx.beginPath();
-    ctx.arc(x, y, 230 + pulse, 0, Math.PI * 2);
+    ctx.ellipse(x - 15, y - 25, 85, 58, -0.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Water.
-    ctx.fillStyle = "#142f49";
-    ctx.beginPath();
-    ctx.ellipse(x, y, 135, 85, -0.15, 0, Math.PI * 2);
-    ctx.fill();
+    // Moving moonlight ripples.
+    for (let i = 0; i < 9; i++) {
+        const wave = (time * 0.018 + i * 19) % 125;
+        const alpha = 0.08 + (i % 3) * 0.035;
 
-    ctx.strokeStyle = "rgba(212,175,55,0.45)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Water reflections.
-    for (let i = 0; i < 7; i++) {
-
-        const offset = (time * 0.015 + i * 25) % 100;
-
-        ctx.strokeStyle = `rgba(212,175,55,${0.12 + i * 0.015})`;
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = `rgba(255,226,151,${alpha})`;
+        ctx.lineWidth = i % 3 === 0 ? 2 : 1;
 
         ctx.beginPath();
         ctx.ellipse(
-            x,
-            y + offset - 50,
-            45 + i * 7,
-            8,
-            0,
+            x - 18 + Math.sin(time * 0.0005 + i) * 12,
+            y - 28 + wave - 62,
+            23 + i * 5,
+            3 + i * 0.5,
+            -0.12,
             0,
             Math.PI * 2
         );
         ctx.stroke();
     }
 
+    // Lily pads.
+    const lilyPads = [
+        [-82, -24, 17],
+        [70, 24, 14],
+        [37, -48, 11],
+        [-48, 43, 12]
+    ];
+
+    lilyPads.forEach((pad, i) => {
+        const px = x + pad[0] + Math.sin(time * 0.001 + i) * 2;
+        const py = y + pad[1] + Math.cos(time * 0.0012 + i) * 2;
+
+        ctx.fillStyle = "#173e36";
+        ctx.beginPath();
+        ctx.arc(px, py, pad[2], 0.2, Math.PI * 2);
+        ctx.lineTo(px, py);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(125,166,112,0.55)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.strokeStyle = "rgba(174,193,123,0.4)";
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px + pad[2] * 0.7, py - pad[2] * 0.45);
+        ctx.stroke();
+    });
+
+    // Small flowers floating on the water.
+    for (let i = 0; i < 3; i++) {
+        const fx = x + [-28, 87, -100][i];
+        const fy = y + [35, -30, 8][i];
+
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.rotate(time * 0.00025 + i);
+
+        for (let p = 0; p < 5; p++) {
+            ctx.rotate((Math.PI * 2) / 5);
+            ctx.fillStyle = "rgba(255,225,174,0.85)";
+            ctx.beginPath();
+            ctx.ellipse(0, -5, 3, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.fillStyle = "#d4af37";
+        ctx.beginPath();
+        ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // Glowing floating fireflies above the water.
+    for (let i = 0; i < 7; i++) {
+        const angle = time * 0.00035 + i * 0.9;
+        const fx = x + Math.cos(angle) * (155 + (i % 3) * 12);
+        const fy = y + Math.sin(angle * 1.4) * (85 + (i % 2) * 15);
+        const glowSize = 3 + Math.sin(time * 0.004 + i) * 1.5;
+
+        const fireflyGlow = ctx.createRadialGradient(fx, fy, 0, fx, fy, 17);
+        fireflyGlow.addColorStop(0, "rgba(255,224,135,0.65)");
+        fireflyGlow.addColorStop(1, "rgba(255,224,135,0)");
+
+        ctx.fillStyle = fireflyGlow;
+        ctx.beginPath();
+        ctx.arc(fx, fy, 17, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#ffe6a0";
+        ctx.beginPath();
+        ctx.arc(fx, fy, glowSize, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Stones around the shore.
+    const stones = [
+        [-145, -5, 8], [-112, 76, 6], [116, 72, 9],
+        [151, 4, 7], [91, -88, 6], [-68, -94, 7]
+    ];
+
+    stones.forEach((stone, i) => {
+        ctx.fillStyle = i % 2 === 0 ? "#65736a" : "#455d59";
+        ctx.beginPath();
+        ctx.ellipse(
+            x + stone[0],
+            y + stone[1],
+            stone[2],
+            stone[2] * 0.65,
+            0.3,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+    });
+
+    // Soft golden rim.
+    ctx.strokeStyle = `rgba(212,175,55,${0.35 + pulse * 0.08})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 163, 105, -0.12, 0, Math.PI * 2);
+    ctx.stroke();
+
     ctx.restore();
 }
+
+
 
 // ============================================
 // DRAW THE LANTERN
 // ============================================
 
+
 function drawLantern(time) {
-
     const object = objects[0];
-
     if (object.discovered) return;
 
-    const pulse = Math.sin(time * 0.003) * 6;
+    const pulse = Math.sin(time * 0.003);
+    const flicker = Math.sin(time * 0.018) * 2;
 
     ctx.save();
     ctx.translate(object.x, object.y);
 
-    // Golden glow.
-    const glow = ctx.createRadialGradient(
-        0, -15, 2,
-        0, -15, 85 + pulse
-    );
+    // Large golden pool of light.
+    const groundGlow = ctx.createRadialGradient(0, 10, 5, 0, 10, 145);
+    groundGlow.addColorStop(0, "rgba(255,190,75,0.22)");
+    groundGlow.addColorStop(0.5, "rgba(212,145,45,0.10)");
+    groundGlow.addColorStop(1, "rgba(212,145,45,0)");
 
-    glow.addColorStop(0, "rgba(255,220,120,0.35)");
-    glow.addColorStop(1, "rgba(255,190,70,0)");
-
-    ctx.fillStyle = glow;
+    ctx.fillStyle = groundGlow;
     ctx.beginPath();
-    ctx.arc(0, -15, 85 + pulse, 0, Math.PI * 2);
+    ctx.ellipse(0, 12, 145, 90, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Lantern base.
-    ctx.fillStyle = "#583b22";
-    ctx.fillRect(-13, -8, 26, 34);
+    // Floating aura.
+    const aura = ctx.createRadialGradient(0, -20, 3, 0, -20, 105 + pulse * 8);
+    aura.addColorStop(0, "rgba(255,224,145,0.32)");
+    aura.addColorStop(0.4, "rgba(255,190,75,0.12)");
+    aura.addColorStop(1, "rgba(255,190,75,0)");
 
-    // Glass.
-    ctx.fillStyle = "#f7c65b";
-    ctx.fillRect(-9, -23, 18, 18);
-
-    // Flame.
-    ctx.fillStyle = "#fff1ae";
+    ctx.fillStyle = aura;
     ctx.beginPath();
-    ctx.arc(0, -15, 5 + pulse * 0.15, 0, Math.PI * 2);
+    ctx.arc(0, -20, 105 + pulse * 8, 0, Math.PI * 2);
     ctx.fill();
 
+    // Shadow.
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(0, 28, 25, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hanging hook.
+    ctx.strokeStyle = "#684b2d";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(0, -47);
+    ctx.quadraticCurveTo(0, -64, 11, -64);
+    ctx.quadraticCurveTo(22, -64, 19, -52);
+    ctx.stroke();
+
+    // Top cap.
+    ctx.fillStyle = "#503820";
+    ctx.beginPath();
+    ctx.moveTo(-17, -37);
+    ctx.lineTo(17, -37);
+    ctx.lineTo(12, -27);
+    ctx.lineTo(-12, -27);
+    ctx.closePath();
+    ctx.fill();
+
+    // Metal frame.
+    ctx.strokeStyle = "#b28a43";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-14, -30);
+    ctx.lineTo(-19, 15);
+    ctx.lineTo(-13, 25);
+    ctx.lineTo(13, 25);
+    ctx.lineTo(19, 15);
+    ctx.lineTo(14, -30);
+    ctx.stroke();
+
+    // Glass chamber.
+    const glass = ctx.createLinearGradient(-15, 0, 15, 0);
+    glass.addColorStop(0, "rgba(255,172,62,0.18)");
+    glass.addColorStop(0.5, "rgba(255,229,150,0.75)");
+    glass.addColorStop(1, "rgba(255,172,62,0.18)");
+
+    ctx.fillStyle = glass;
+    ctx.beginPath();
+    ctx.moveTo(-13, -27);
+    ctx.lineTo(13, -27);
+    ctx.lineTo(16, 13);
+    ctx.lineTo(-16, 13);
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner flame.
+    ctx.fillStyle = "#ff9f36";
+    ctx.beginPath();
+    ctx.moveTo(0, 11);
+    ctx.bezierCurveTo(-13, 0, -5, -13, 1, -23 + flicker);
+    ctx.bezierCurveTo(3, -12, 15, -4, 0, 11);
+    ctx.fill();
+
+    ctx.fillStyle = "#fff2b8";
+    ctx.beginPath();
+    ctx.moveTo(0, 7);
+    ctx.bezierCurveTo(-6, 0, -2, -9, 2, -15 + flicker * 0.5);
+    ctx.bezierCurveTo(5, -7, 8, 1, 0, 7);
+    ctx.fill();
+
+    // Bottom cap.
+    ctx.fillStyle = "#684a2b";
+    ctx.beginPath();
+    ctx.moveTo(-17, 20);
+    ctx.lineTo(17, 20);
+    ctx.lineTo(12, 30);
+    ctx.lineTo(-12, 30);
+    ctx.closePath();
+    ctx.fill();
+
+    // Gold details.
+    ctx.strokeStyle = "#e2bd69";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-14, -30);
+    ctx.lineTo(14, -30);
+    ctx.moveTo(-15, 17);
+    ctx.lineTo(15, 17);
+    ctx.stroke();
+
+    // Tiny sparks.
+    for (let i = 0; i < 5; i++) {
+        const angle = time * 0.001 + i * 1.25;
+        const sx = Math.cos(angle) * (27 + i * 3);
+        const sy = -12 + Math.sin(angle * 1.4) * 28;
+
+        ctx.globalAlpha = 0.4 + (Math.sin(time * 0.004 + i) + 1) * 0.3;
+        ctx.fillStyle = "#ffe6a0";
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.5 + (i % 2), 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
     ctx.restore();
 }
 
@@ -1696,57 +2063,122 @@ function chooseConstellationSymbol(symbol) {
 // MEMORY FRAGMENT VISUALS
 // ============================================
 
+
 function drawMemoryFragments(time) {
-
     objects.forEach(object => {
+        if (!object.id.startsWith("memory-") || object.discovered) return;
 
-        if (!object.id.startsWith("memory-") || object.discovered) {
-            return;
+        const pulse = Math.sin(time * 0.003 + object.x) * 0.5 + 0.5;
+        const bob = Math.sin(time * 0.002 + object.y) * 5;
+
+        let mainColour = "#e32643";
+        let glowColour = "rgba(226,38,67,";
+        let highlight = "#ffd1d8";
+
+        if (object.id === "memory-moon") {
+            mainColour = "#9bc9ed";
+            glowColour = "rgba(130,190,245,";
+            highlight = "#f0f8ff";
+        } else if (object.id === "memory-star") {
+            mainColour = "#e4b94d";
+            glowColour = "rgba(255,208,90,";
+            highlight = "#fff2bd";
         }
 
-        const pulse = 0.7 + Math.sin(time * 0.003 + object.x) * 0.3;
-
-        const x = Math.round(object.x);
-        const y = Math.round(object.y);
+        const x = object.x;
+        const y = object.y + bob;
 
         ctx.save();
+        ctx.translate(x, y);
 
-        // Glowing aura.
-        ctx.globalAlpha = pulse * 0.35;
+        // Large magical aura.
+        const aura = ctx.createRadialGradient(0, 0, 2, 0, 0, 65 + pulse * 12);
+        aura.addColorStop(0, glowColour + "0.30)");
+        aura.addColorStop(0.5, glowColour + "0.10)");
+        aura.addColorStop(1, glowColour + "0)");
 
-        const glow = ctx.createRadialGradient(
-            x, y, 2,
-            x, y, 34
-        );
-
-        glow.addColorStop(0, "#ffe59a");
-        glow.addColorStop(1, "rgba(212,175,55,0)");
-
-        ctx.fillStyle = glow;
+        ctx.fillStyle = aura;
         ctx.beginPath();
-        ctx.arc(x, y, 34, 0, Math.PI * 2);
+        ctx.arc(0, 0, 65 + pulse * 12, 0, Math.PI * 2);
         ctx.fill();
+
+        // Orbiting particles.
+        for (let i = 0; i < 4; i++) {
+            const angle = time * 0.001 + i * Math.PI / 2;
+            const orbit = 28 + Math.sin(time * 0.002 + i) * 4;
+            const px = Math.cos(angle) * orbit;
+            const py = Math.sin(angle) * orbit;
+
+            ctx.fillStyle = highlight;
+            ctx.globalAlpha = 0.45 + pulse * 0.5;
+            ctx.beginPath();
+            ctx.arc(px, py, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         ctx.globalAlpha = 1;
 
-        // Pixel-art crystal.
-        ctx.fillStyle = "#8e142d";
-        ctx.fillRect(x - 6, y - 7, 12, 14);
+        // Crystal shadow.
+        ctx.fillStyle = "rgba(0,0,0,0.3)";
+        ctx.beginPath();
+        ctx.ellipse(0, 25, 15, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
 
-        ctx.fillStyle = "#e32643";
-        ctx.fillRect(x - 3, y - 11, 6, 4);
-        ctx.fillRect(x - 9, y - 3, 3, 7);
-        ctx.fillRect(x + 6, y - 3, 3, 7);
+        // Main crystal body.
+        ctx.beginPath();
+        ctx.moveTo(0, -23);
+        ctx.lineTo(15, -7);
+        ctx.lineTo(11, 16);
+        ctx.lineTo(0, 24);
+        ctx.lineTo(-11, 16);
+        ctx.lineTo(-15, -7);
+        ctx.closePath();
 
-        ctx.fillStyle = "#d4af37";
-        ctx.fillRect(x - 2, y - 5, 4, 9);
+        const crystal = ctx.createLinearGradient(-15, -10, 15, 15);
+        crystal.addColorStop(0, highlight);
+        crystal.addColorStop(0.35, mainColour);
+        crystal.addColorStop(1, "#47172d");
 
-        ctx.fillStyle = "#fff1b8";
-        ctx.fillRect(x - 2, y - 8, 3, 3);
+        ctx.fillStyle = crystal;
+        ctx.fill();
 
+        // Crystal facets.
+        ctx.fillStyle = "rgba(255,255,255,0.25)";
+        ctx.beginPath();
+        ctx.moveTo(0, -23);
+        ctx.lineTo(-15, -7);
+        ctx.lineTo(-3, 2);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(0,0,0,0.18)";
+        ctx.beginPath();
+        ctx.moveTo(0, -23);
+        ctx.lineTo(15, -7);
+        ctx.lineTo(3, 2);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(255,255,255,0.16)";
+        ctx.beginPath();
+        ctx.moveTo(-3, 2);
+        ctx.lineTo(3, 2);
+        ctx.lineTo(0, 22);
+        ctx.closePath();
+        ctx.fill();
+
+        // Bright centre.
+        ctx.fillStyle = highlight;
+        ctx.globalAlpha = 0.7 + pulse * 0.3;
+        ctx.beginPath();
+        ctx.arc(-3, -7, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = 1;
         ctx.restore();
     });
 }
+
 
 // ============================================
 // INVENTORY AND QUEST JOURNAL UI
